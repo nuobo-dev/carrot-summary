@@ -175,3 +175,22 @@ Everything is stored locally in a SQLite database on your machine. Nothing leave
 
 - **Mac**: `~/Library/Application Support/FlowTrack/`
 - **Windows**: `%APPDATA%/FlowTrack/`
+
+---
+
+## Rebuilding the App After Changes
+
+If you make code changes and want to update the standalone `.app` and `.dmg`:
+
+```
+cd flowtrack
+./scripts/rebuild.sh
+```
+
+This script will:
+1. Install/update dependencies
+2. Run all tests (stops if any fail)
+3. Build `dist/FlowTrack.app` via PyInstaller
+4. Package it into `dist/FlowTrack.dmg`
+
+After it finishes, you can test with `open dist/FlowTrack.app` or distribute the `.dmg`.
