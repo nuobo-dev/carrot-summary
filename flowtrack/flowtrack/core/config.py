@@ -38,22 +38,57 @@ def get_default_config() -> dict[str, Any]:
         "debounce_threshold_seconds": 30,
         "classification_rules": [
             {
-                "app_patterns": ["Microsoft Word", "Google Docs", "Pages"],
-                "title_patterns": [],
+                "app_patterns": ["Microsoft Word", "Google Docs", "Pages", "Quip", "Notion", "Obsidian", "Bear"],
+                "title_patterns": [r"(?i)\.docx?\b", r"(?i)\.md\b"],
                 "category": "Document Editing",
             },
             {
                 "app_patterns": ["Outlook", "Gmail", "Thunderbird", "Mail"],
+                "title_patterns": [r"(?i)\binbox\b", r"(?i)\bcompose\b", r"(?i)\breply\b"],
+                "category": "Email & Communication",
+            },
+            {
+                "app_patterns": ["Slack", "Discord", "Microsoft Teams", "Messages"],
                 "title_patterns": [],
                 "category": "Email & Communication",
             },
             {
-                "app_patterns": ["Zoom", "Teams", "Webex", "Google Meet"],
-                "title_patterns": [],
+                "app_patterns": ["Zoom", "Teams", "Webex", "Google Meet", "FaceTime"],
+                "title_patterns": [r"(?i)\bmeeting\b", r"(?i)\bcall\b"],
                 "category": "Meetings",
             },
             {
-                "app_patterns": ["Chrome", "Firefox", "Safari", "Edge"],
+                "app_patterns": ["Microsoft Excel", "Google Sheets", "Numbers"],
+                "title_patterns": [r"(?i)\.xlsx?\b"],
+                "category": "Spreadsheets",
+            },
+            {
+                "app_patterns": ["Microsoft PowerPoint", "Google Slides", "Keynote"],
+                "title_patterns": [r"(?i)\.pptx?\b"],
+                "category": "Presentations",
+            },
+            {
+                "app_patterns": ["Jira", "Asana", "Trello", "Linear", "Monday", "ClickUp", "Taskei"],
+                "title_patterns": [],
+                "category": "Project Management",
+            },
+            {
+                "app_patterns": ["Figma", "Sketch", "Adobe Photoshop", "Adobe Illustrator", "Canva"],
+                "title_patterns": [],
+                "category": "Creative Tools",
+            },
+            {
+                "app_patterns": ["Visual Studio Code", "Code", "IntelliJ", "PyCharm", "WebStorm", "Xcode", "Sublime Text", "Vim", "Neovim"],
+                "title_patterns": [],
+                "category": "Development",
+            },
+            {
+                "app_patterns": ["Terminal", "iTerm2", "iTerm", "Warp", "Alacritty", "Hyper"],
+                "title_patterns": [],
+                "category": "Development",
+            },
+            {
+                "app_patterns": ["Chrome", "Firefox", "Safari", "Edge", "Brave", "Arc", "Opera"],
                 "title_patterns": [".*"],
                 "category": "Research & Browsing",
             },

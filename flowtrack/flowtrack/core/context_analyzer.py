@@ -1,15 +1,91 @@
 """Context analyzer for FlowTrack.
 
-Refines a Work_Category into a more specific sub-category by matching
-window title patterns. Uses configurable regex rules with named groups
-to extract document names and build human-readable context labels.
+Refines a Work_Category into a specific sub-category by:
+1. Matching configurable regex rules with named groups
+2. Smart title parsing that extracts document names, email subjects,
+   project names, etc. from common window title patterns
 
-Falls back to the Work_Category as the sub_category when no rule matches.
+Falls back to the Work_Category as the sub_category when nothing matches.
 """
 
 import re
+from typing import Optional
 
 from flowtrack.core.models import ContextResult, ContextRule
+
+
+# Common suffixes/noise to strip from window titles
+_STRIP_SUFFIXES = [
+    r"\s*[-–—]\s*(Google Chrome|Firefox|Safari|Microsoft Edge|Brave|Arc|Opera)$",
+    r"\s*[-–—]\s*(Microsoft Word|Microsoft Excel|Microsoft PowerPoint)$",
+    r"\s*[-–—]\s*(Google Docs|Google Sheets|Google Slides)$",
+    r"\s*[-–—]\s*(Pages|Numbers|Keynote)$",
+    r"\s*[-–—]\s*(Visual Studio Code|VS Code|Code)$",
+    r"\s*[-–—]\s*(Sublime Text|Atom|Vim|Neovim|Emacs)$",
+    r"\s*[-–—]\s*(Slack|Discord|Microsoft Teams)$",
+    r"\s*[-–—]\s*(Outlook|Mail|Thunderbird)$",
+    r"\s*[-–—]\s*(Figma|Sketch|Adobe \w+)$",
+    r"\s*[-–—]\s*(Notion|Obsidian|Bear|Evernote)$",
+    r"\s*[-–—]\s*(Terminal|iTerm2?|Warp|Alacritty|Hyper)$",
+]
+
+# Patterns for extracting granular context from window titles
+_SMART_PATTERNS: list[tuple[str, str, list[str]]] = [
+    # Email: "Subject - recipient@email.com - Outlook"
+    ("Email & Communication", "Emailing: {subject}",
+     [r"(?i)(?:re:\s*|fw:\s*|fwd:\s*)*(?P<subject>.+?)\s*[-–—]\s*(?P<recipient>[^-–—]+@[^-–—]+)",
+      r"(?i)(?:compose|new message|reply|forward).*?(?:to|:)\s*(?P<recipient>[^-–—]+)",
+      r"(?i)(?:re:\s*|fw:\s*|fwd:\s*)*(?P<subject>.+?)(?:\s*[-–—]|$)"]),
+
+    # Email inbox/reading
+    ("Email & Communication", "Reading emails",
+     [r"(?i)^(inbox|mail|all mail|sent|drafts|spam|trash|junk)\b"]),
+
+    # Meetings with title
+    ("Meetings", "Meeting: {subject}",
+     [r"(?i)(?P<subject>.+?)\s*[-–—]\s*(?:zoom|teams|webex|google meet|meet)",
+      r"(?i)(?:zoom|teams|webex|meet)\s*[-–—]\s*(?P<subject>.+)"]),
+
+    # Google Docs / Quip / Notion — document title is usually the first part
+    ("Document Editing", "Writing: {doc}",
+     [r"(?P<doc>.+?)\s*[-–—]\s*(?:Google Docs|Quip|Notion|Pages)",
+      r"(?P<doc>.+?)\s*[-–—]\s*(?:Microsoft Word|Word)",
+      r"(?P<doc>.+?)\.docx?\b",
+      r"(?P<doc>.+?)\.md\b"]),
+
+    # Spreadsheets
+    ("Spreadsheets", "Spreadsheet: {doc}",
+     [r"(?P<doc>.+?)\s*[-–—]\s*(?:Google Sheets|Microsoft Excel|Numbers)",
+      r"(?P<doc>.+?)\.xlsx?\b"]),
+
+    # Presentations
+    ("Presentations", "Presentation: {doc}",
+     [r"(?P<doc>.+?)\s*[-–—]\s*(?:Google Slides|Microsoft PowerPoint|Keynote)",
+      r"(?P<doc>.+?)\.pptx?\b"]),
+
+    # IDE / Development — extract filename or project
+    ("Development", "Coding: {file}",
+     [r"(?P<file>[^\s]+\.\w{1,5})\s*[-–—]\s*(?P<project>.+)",
+      r"(?P<project>.+?)\s*[-–—]\s*(?:Visual Studio|VS Code|Code|IntelliJ|PyCharm|WebStorm)"]),
+
+    # Browser tabs — extract the page title
+    ("Research & Browsing", "Browsing: {page}",
+     [r"(?P<page>.+?)\s*[-–—]\s*(?:Google Chrome|Firefox|Safari|Edge|Brave|Arc)"]),
+
+    # Slack/Teams channels
+    ("Email & Communication", "Chat: {channel}",
+     [r"(?P<channel>.+?)\s*[-–—]\s*(?:Slack|Discord)",
+      r"(?i)(?:slack|discord)\s*[-–—]\s*(?P<channel>.+)"]),
+
+    # Project management tools
+    ("Project Management", "Task: {item}",
+     [r"(?P<item>.+?)\s*[-–—]\s*(?:Jira|Asana|Trello|Linear|Monday|ClickUp|Taskei)",
+      r"(?i)(?:jira|asana|trello|linear)\s*[-–—]\s*(?P<item>.+)"]),
+
+    # Design tools
+    ("Creative Tools", "Designing: {file}",
+     [r"(?P<file>.+?)\s*[-–—]\s*(?:Figma|Sketch|Adobe \w+|Canva)"]),
+]
 
 
 class ContextAnalyzer:
@@ -21,16 +97,15 @@ class ContextAnalyzer:
     def analyze(
         self, app_name: str, window_title: str, category: str
     ) -> ContextResult:
-        """Refine a Work_Category into a sub-category based on window title patterns.
+        """Refine a Work_Category into a sub-category based on window title.
 
-        Only rules whose ``category`` matches the input *category* are
-        considered.  Rules are evaluated in order; the first matching rule
-        wins.  Named regex groups in the matching pattern are used to build
-        a human-readable ``context_label``.
-
-        Falls back to *category* as the ``sub_category`` (and
-        ``context_label``) when no rule matches.
+        Priority:
+        1. User-configured rules (exact match by category)
+        2. Smart title parsing (built-in patterns)
+        3. Clean title extraction (strip app name suffix)
+        4. Fall back to category name
         """
+        # 1. Try user-configured rules first
         for rule in self.rules:
             if rule.category != category:
                 continue
@@ -43,7 +118,21 @@ class ContextAnalyzer:
                     context_label=label,
                 )
 
-        # No rule matched — fall back to the Work_Category itself.
+        # 2. Try smart title parsing
+        result = _smart_parse(window_title, category)
+        if result is not None:
+            return result
+
+        # 3. Try to extract a clean title by stripping app name
+        clean = _clean_title(window_title)
+        if clean and clean.lower() != category.lower() and len(clean) > 2:
+            return ContextResult(
+                category=category,
+                sub_category=clean,
+                context_label=clean,
+            )
+
+        # 4. Fall back to category
         return ContextResult(
             category=category,
             sub_category=category,
@@ -66,14 +155,54 @@ def _match_title(
 
 
 def _build_label(sub_category: str, match: "re.Match[str]") -> str:
-    """Build a human-readable context label from the sub-category and match.
-
-    If the match contains named groups with non-empty values, they are
-    joined with ``" "`` and appended to the sub-category after ``": "``.
-    Otherwise the label is just the sub-category.
-    """
+    """Build a human-readable context label from the sub-category and match."""
     named = match.groupdict()
     parts = [v.strip() for v in named.values() if v and v.strip()]
     if parts:
         return f"{sub_category}: {' '.join(parts)}"
     return sub_category
+
+
+def _smart_parse(window_title: str, category: str) -> Optional[ContextResult]:
+    """Try built-in smart patterns to extract granular context."""
+    for pat_category, label_template, patterns in _SMART_PATTERNS:
+        if pat_category != category:
+            continue
+        for pattern in patterns:
+            try:
+                m = re.search(pattern, window_title)
+                if m is None:
+                    continue
+                groups = m.groupdict()
+                # Build the sub_category from the template
+                sub = label_template
+                for key, val in groups.items():
+                    if val:
+                        val = val.strip().rstrip(" -–—")
+                        sub = sub.replace(f"{{{key}}}", val)
+                # Remove unfilled placeholders
+                sub = re.sub(r"\{[^}]+\}", "", sub).strip(": ")
+                if not sub or len(sub) < 3:
+                    continue
+                # Truncate very long labels
+                if len(sub) > 80:
+                    sub = sub[:77] + "..."
+                return ContextResult(
+                    category=category,
+                    sub_category=sub,
+                    context_label=sub,
+                )
+            except re.error:
+                continue
+    return None
+
+
+def _clean_title(window_title: str) -> str:
+    """Strip common app name suffixes from a window title."""
+    cleaned = window_title
+    for pattern in _STRIP_SUFFIXES:
+        try:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+        except re.error:
+            continue
+    return cleaned.strip(" -–—")

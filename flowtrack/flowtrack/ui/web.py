@@ -73,9 +73,22 @@ def create_flask_app() -> Flask:
             return jsonify({"error": "not ready"})
         from flowtrack.reporting.formatter import TextFormatter
         s = _app_ref._summary_generator.daily_summary(date.today())
-        cats = [{"category": c.category, "time": str(c.total_time),
-                 "time_str": TextFormatter.format_duration(c.total_time),
-                 "sessions": c.completed_sessions} for c in s.categories]
+        cats = []
+        for c in s.categories:
+            subs = []
+            for sub_name, sub_time in sorted(c.sub_categories.items(), key=lambda x: x[1], reverse=True):
+                if sub_name and sub_name != c.category:
+                    subs.append({
+                        "name": sub_name,
+                        "time_str": TextFormatter.format_duration(sub_time),
+                    })
+            cats.append({
+                "category": c.category,
+                "time": str(c.total_time),
+                "time_str": TextFormatter.format_duration(c.total_time),
+                "sessions": c.completed_sessions,
+                "sub_tasks": subs,
+            })
         return jsonify({
             "date": str(s.date),
             "categories": cats,
@@ -235,6 +248,23 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
        border-bottom: 2px solid var(--border); }
   td { border-bottom: 1px solid var(--border); }
   .bar { height: 6px; border-radius: 3px; background: var(--accent); }
+  /* Hierarchical activity breakdown */
+  .activity-cat { margin-bottom: 16px; }
+  .activity-cat-header { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+  .activity-cat-header:hover { opacity: 0.8; }
+  .activity-cat-name { font-weight: 600; font-size: 0.95em; flex: 1; }
+  .activity-cat-time { font-size: 0.9em; color: var(--muted); min-width: 60px; text-align: right; }
+  .activity-cat-sessions { font-size: 0.75em; color: var(--muted); min-width: 70px; text-align: right; }
+  .activity-cat-bar { flex: 0 0 120px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .activity-cat-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+  .activity-subs { padding-left: 20px; border-left: 2px solid var(--border); margin-left: 8px; }
+  .activity-sub { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 0.85em; color: var(--text); }
+  .activity-sub-name { flex: 1; }
+  .activity-sub-time { color: var(--muted); min-width: 60px; text-align: right; }
+  .activity-sub-bar { flex: 0 0 80px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  .activity-sub-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); opacity: 0.6; }
+  .chevron { font-size: 0.7em; color: var(--muted); transition: transform 0.2s; }
+  .chevron.open { transform: rotate(90deg); }
   /* Settings */
   .setting-group { margin-bottom: 16px; }
   .setting-group label { display: block; font-size: 0.8em; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
@@ -323,11 +353,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <div class="panel" id="panel-activity">
     <div class="card">
       <h2>Today's Activity</h2>
-      <div id="activity-summary"></div>
-      <table>
-        <thead><tr><th>Category</th><th>Time</th><th></th><th>Sessions</th></tr></thead>
-        <tbody id="activity-table"></tbody>
-      </table>
+      <div id="activity-breakdown"></div>
       <div style="margin-top:12px;text-align:right;color:var(--muted);font-size:0.85em">
         Total: <strong id="activity-total">0m</strong> &middot; <span id="activity-sessions">0</span> sessions
       </div>
@@ -461,16 +487,57 @@ async function refreshTodos() {
 
 async function refreshActivity() {
   const d = await fetchJSON('/api/summary/daily');
-  const tb = document.getElementById('activity-table');
+  const container = document.getElementById('activity-breakdown');
+  if (!d.categories || d.categories.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:0.9em">No activity recorded yet today.</p>';
+    document.getElementById('activity-total').textContent = '0m';
+    document.getElementById('activity-sessions').textContent = '0';
+    return;
+  }
   const maxTime = Math.max(...d.categories.map(c => parseDur(c.time_str)), 1);
-  tb.innerHTML = d.categories.map(c => {
+  let html = '';
+  d.categories.forEach((c, i) => {
     const pct = (parseDur(c.time_str) / maxTime * 100).toFixed(0);
-    return `<tr><td>${esc(c.category)}</td><td>${c.time_str}</td>
-      <td style="width:30%"><div class="bar" style="width:${pct}%"></div></td>
-      <td>${c.sessions}</td></tr>`;
-  }).join('');
+    const hasSubs = c.sub_tasks && c.sub_tasks.length > 0;
+    const maxSub = hasSubs ? Math.max(...c.sub_tasks.map(s => parseDur(s.time_str)), 1) : 1;
+    html += `<div class="activity-cat">
+      <div class="activity-cat-header" onclick="toggleSubs(${i})">
+        <span class="chevron ${hasSubs ? 'open' : ''}" id="chev-${i}">${hasSubs ? '▶' : '•'}</span>
+        <span class="activity-cat-name">${esc(c.category)}</span>
+        <span class="activity-cat-bar"><span class="activity-cat-bar-fill" style="width:${pct}%"></span></span>
+        <span class="activity-cat-time">${c.time_str}</span>
+        <span class="activity-cat-sessions">${c.sessions} sess</span>
+      </div>`;
+    if (hasSubs) {
+      html += `<div class="activity-subs" id="subs-${i}">`;
+      c.sub_tasks.forEach(s => {
+        const sp = (parseDur(s.time_str) / maxSub * 100).toFixed(0);
+        html += `<div class="activity-sub">
+          <span class="activity-sub-name">${esc(s.name)}</span>
+          <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%"></span></span>
+          <span class="activity-sub-time">${s.time_str}</span>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
   document.getElementById('activity-total').textContent = d.total_time;
   document.getElementById('activity-sessions').textContent = d.total_sessions;
+}
+
+function toggleSubs(i) {
+  const el = document.getElementById('subs-' + i);
+  const chev = document.getElementById('chev-' + i);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = '';
+    if (chev) chev.classList.add('open');
+  } else {
+    el.style.display = 'none';
+    if (chev) chev.classList.remove('open');
+  }
 }
 
 function parseDur(s) {
