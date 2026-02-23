@@ -27,7 +27,16 @@ _STRIP_SUFFIXES = [
     r"\s*[-–—]\s*(Figma|Sketch|Adobe \w+)$",
     r"\s*[-–—]\s*(Notion|Obsidian|Bear|Evernote)$",
     r"\s*[-–—]\s*(Terminal|iTerm2?|Warp|Alacritty|Hyper)$",
+    r"\s*[-–—]\s*(Quip|Confluence|Coda)$",
 ]
+
+# Labels that are too generic to be useful as task names
+_GENERIC_LABELS = {
+    "new tab", "untitled", "google", "search", "home", "about:blank",
+    "loading", "gmail", "inbox", "mail", "outlook", "calendar",
+    "google chrome", "firefox", "safari", "edge", "brave", "arc",
+    "electron", "code", "terminal", "finder", "desktop",
+}
 
 # Patterns for extracting granular context from window titles
 _SMART_PATTERNS: list[tuple[str, str, list[str]]] = [
@@ -125,7 +134,7 @@ class ContextAnalyzer:
 
         # 3. Try to extract a clean title by stripping app name
         clean = _clean_title(window_title)
-        if clean and clean.lower() != category.lower() and len(clean) > 2:
+        if clean and clean.lower() not in _GENERIC_LABELS and clean.lower() != category.lower() and len(clean) > 4:
             return ContextResult(
                 category=category,
                 sub_category=clean,
@@ -183,6 +192,9 @@ def _smart_parse(window_title: str, category: str) -> Optional[ContextResult]:
                 # Remove unfilled placeholders
                 sub = re.sub(r"\{[^}]+\}", "", sub).strip(": ")
                 if not sub or len(sub) < 3:
+                    continue
+                # Skip generic/unhelpful labels
+                if sub.lower().strip() in _GENERIC_LABELS:
                     continue
                 # Truncate very long labels
                 if len(sub) > 80:

@@ -133,15 +133,60 @@ class Tracker:
         self._running = False
 
     def _maybe_create_todo(self, category: str, sub_category: str) -> None:
-        """Auto-create a todo when a new work context is detected."""
+        """Auto-create a todo when a meaningful new work context is detected.
+
+        Skips generic/unhelpful labels (just the category name, app names,
+        or very short strings). Deduplicates against both the in-memory
+        seen set and existing todos in the database.
+        """
         if category == "Other" or not sub_category:
             return
+
+        # Skip if the sub_category is just the category name (no real context)
+        if sub_category.lower() == category.lower():
+            return
+
+        # Skip very short or generic labels
+        if len(sub_category) < 5:
+            return
+
+        # Skip labels that are just app names
+        _SKIP_NAMES = {
+            "google chrome", "firefox", "safari", "edge", "brave", "arc",
+            "chrome", "opera", "slack", "discord", "zoom", "teams",
+            "outlook", "mail", "terminal", "iterm", "finder", "explorer",
+            "code", "vs code", "visual studio code", "electron",
+        }
+        if sub_category.lower().strip() in _SKIP_NAMES:
+            return
+
+        # In-memory dedup
         key = f"{category}::{sub_category}"
         if key in self._seen_contexts:
             return
         self._seen_contexts.add(key)
+
+        # Database dedup — check if a todo with similar title already exists
         try:
-            label = sub_category if sub_category != category else category
-            self.store.add_todo(f"Work on: {label}", category, auto=True)
+            existing = self.store.get_todos(include_done=True)
+            normalized = _normalize_todo(sub_category)
+            for todo in existing:
+                if _normalize_todo(todo.get("title", "")) == normalized:
+                    return
+        except Exception:
+            pass
+
+        try:
+            self.store.add_todo(sub_category, category, auto=True)
         except Exception:
             logger.debug("Could not auto-create todo for %s", key)
+
+
+def _normalize_todo(title: str) -> str:
+    """Normalize a todo title for dedup comparison."""
+    import re
+    t = title.lower().strip()
+    # Strip common prefixes we used to add
+    t = re.sub(r"^work on:\s*", "", t)
+    t = re.sub(r"^(writing|emailing|browsing|coding|designing|meeting|chat|task|spreadsheet|presentation):\s*", "", t)
+    return t.strip()
