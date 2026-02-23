@@ -344,6 +344,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <script>
 let config = {}, currentSession = null;
 const C = 2 * Math.PI * 90;
+let lastRemaining = 0, lastRemainingAt = 0, lastTotal = 1500, lastStatus = null;
 
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
@@ -364,6 +365,27 @@ function parseDur(s) {
   return m || 1;
 }
 
+function updateTimerDisplay(remaining, total, status) {
+  const arc = document.getElementById('timer-arc');
+  const timeEl = document.getElementById('timer-time');
+  const labelEl = document.getElementById('timer-label');
+  if (!status) {
+    arc.style.strokeDashoffset = C;
+    arc.style.transition = 'none';
+    timeEl.textContent = '--:--';
+    labelEl.textContent = 'No session';
+    return;
+  }
+  const pct = Math.max(0, remaining / total);
+  arc.style.transition = 'stroke-dashoffset 0.9s linear';
+  arc.style.strokeDashoffset = C * (1 - pct);
+  arc.style.stroke = status === 'break' ? 'var(--accent2)' : 'var(--accent)';
+  const rem = Math.max(0, Math.round(remaining));
+  const m = Math.floor(rem / 60), sec = rem % 60;
+  timeEl.textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  labelEl.textContent = status === 'break' ? 'Break' : status === 'active' ? 'Focus' : status;
+}
+
 async function refreshStatus() {
   try {
     const d = await fetchJSON('/api/status');
@@ -374,11 +396,12 @@ async function refreshStatus() {
     if (d.session) {
       const s = d.session, rem = s.remaining;
       const total = s.status === 'break' ? (s.completed_count > 0 && s.completed_count % 4 === 0 ? 900 : 300) : 1500;
-      arc.style.strokeDashoffset = C * (1 - Math.max(0, rem / total));
-      arc.style.stroke = s.status === 'break' ? 'var(--accent2)' : 'var(--accent)';
-      const m = Math.floor(rem / 60), sec = rem % 60;
-      document.getElementById('timer-time').textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
-      document.getElementById('timer-label').textContent = s.status === 'break' ? 'Break' : s.status === 'active' ? 'Focus' : s.status;
+      // Store for local interpolation
+      lastRemaining = rem;
+      lastRemainingAt = Date.now();
+      lastTotal = total;
+      lastStatus = s.status;
+      updateTimerDisplay(rem, total, s.status);
       document.getElementById('session-cat').textContent = s.category + (s.sub_category && s.sub_category !== s.category ? ' / ' + s.sub_category : '');
       document.getElementById('session-count').textContent = s.completed_count + ' session' + (s.completed_count !== 1 ? 's' : '') + ' completed';
       const dots = document.getElementById('session-dots');
@@ -390,9 +413,9 @@ async function refreshStatus() {
         dots.appendChild(dot);
       }
     } else {
-      arc.style.strokeDashoffset = C;
-      document.getElementById('timer-time').textContent = '--:--';
-      document.getElementById('timer-label').textContent = 'No session';
+      lastStatus = null;
+      lastRemaining = 0;
+      updateTimerDisplay(0, 1500, null);
       document.getElementById('session-cat').textContent = '-';
       document.getElementById('session-count').textContent = '0 sessions completed';
       document.getElementById('session-dots').innerHTML = '';
@@ -544,6 +567,14 @@ async function startTask() {
 
 setInterval(refreshStatus, 2000);
 setInterval(refreshActivity, 15000);
+
+// Local 1-second tick for smooth timer countdown
+setInterval(function() {
+  if (!lastStatus || lastStatus === 'completed' || lastStatus === 'paused') return;
+  const elapsed = (Date.now() - lastRemainingAt) / 1000;
+  const interpolated = Math.max(0, lastRemaining - elapsed);
+  updateTimerDisplay(interpolated, lastTotal, lastStatus);
+}, 1000);
 
 refreshStatus(); refreshActivity(); loadConfig();
 </script>
