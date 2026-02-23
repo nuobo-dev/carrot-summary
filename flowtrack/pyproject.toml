@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "flowtrack"
+version = "0.1.0"
+description = "Cross-platform productivity tracking with automatic activity classification and Pomodoro management"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pystray>=0.19.0",
+    "Pillow>=10.0.0",
+    "python-docx>=1.0.0",
+    "flask>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "hypothesis>=6.0.0",
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+flowtrack = "flowtrack.main:main"
+
+[tool.setuptools.packages.find]
+include = ["flowtrack*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
