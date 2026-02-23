@@ -17,21 +17,18 @@ A simple app that tracks what you're working on and helps you stay focused. It s
 
 ## Setup (Mac)
 
-### 1. Install Python (if you don't have it)
+### Option A: One-Click Install (Recommended)
 
-Open **Terminal** (press `Cmd + Space`, type "Terminal", press Enter) and run:
+1. Download `FlowTrack.dmg` from the `flowtrack/dist/` folder
+2. Double-click the `.dmg` file to open it
+3. Drag **FlowTrack** to your **Applications** folder
+4. Open **FlowTrack** from Applications
 
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
+That's it. A 🥕 carrot icon will appear in your menu bar. Click it and select **Dashboard**.
 
-Then:
+> **First launch note**: macOS may say "FlowTrack can't be opened because it is from an unidentified developer." If this happens, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
 
-```
-brew install python@3.13
-```
-
-### 2. Install & Launch
+### Option B: Run from Source (for developers)
 
 ```
 cd flowtrack
@@ -41,29 +38,22 @@ pip install -r requirements.txt
 python -m flowtrack.main
 ```
 
-A 🥕 carrot icon will appear in your menu bar. Click it and select **Dashboard** to open the web UI.
-
-### Quick Launch (after first setup)
-
-```
-cd flowtrack
-source venv/bin/activate
-python -m flowtrack.main
-```
-
-Or just double-click `flowtrack/start.sh`.
-
 ---
 
 ## Setup (Windows)
 
-### 1. Install Python
+### Option A: One-Click Install (Recommended)
 
-Go to [python.org/downloads](https://www.python.org/downloads/), download Python 3, and install it. **Check "Add Python to PATH"** during installation.
+1. Download the `FlowTrack.zip` from the `flowtrack/dist/` folder
+2. Extract the zip file
+3. Double-click **FlowTrack.exe** inside the extracted folder
 
-### 2. Install & Launch
+An icon will appear in your system tray. Click it and select **Dashboard**.
 
-Open **Command Prompt** and run:
+### Option B: Run from Source (for developers)
+
+1. Install Python from [python.org/downloads](https://www.python.org/downloads/) — **check "Add Python to PATH"**
+2. Open Command Prompt and run:
 
 ```
 cd flowtrack
@@ -72,10 +62,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 python -m flowtrack.main
 ```
-
-An icon will appear in your system tray. Click it and select **Dashboard**.
-
-Or just double-click `flowtrack\start.bat`.
 
 ---
 
