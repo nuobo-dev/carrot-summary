@@ -89,6 +89,75 @@ Open http://localhost:5555 (or click **Dashboard** from the tray menu). Four tab
 
 ---
 
+## Email Reports (Optional)
+
+FlowTrack can email your weekly summary report to you automatically. This is completely optional — if you skip this, reports are still viewable in the dashboard.
+
+To set it up, go to the **Settings** tab in the dashboard and fill in the Email / Report section.
+
+### What Each Field Means
+
+| Field | What it is | Example |
+|-------|-----------|---------|
+| **SMTP Server** | Your email provider's outgoing mail server address | `smtp.gmail.com` |
+| **Port** | The port number for the mail server (usually 587) | `587` |
+| **Username** | Your email address | `[email]` |
+| **Password** | Your email password or app-specific password | (see below) |
+| **Recipient** | The email address to send reports to (can be the same as username) | `[email]` |
+
+### Setup for Gmail
+
+1. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+2. You may need to enable 2-Step Verification first
+3. Create an app password — select "Mail" and "Mac" (or "Other")
+4. Google will give you a 16-character password — copy it
+5. In FlowTrack Settings, enter:
+   - SMTP Server: `smtp.gmail.com`
+   - Port: `587`
+   - Username: your full Gmail address
+   - Password: the 16-character app password from step 4
+   - Recipient: your email address
+
+### Setup for Outlook / Hotmail
+
+1. In FlowTrack Settings, enter:
+   - SMTP Server: `smtp-mail.outlook.com`
+   - Port: `587`
+   - Username: your full Outlook email address
+   - Password: your Outlook password
+   - Recipient: your email address
+
+### Setup for Yahoo Mail
+
+1. Go to Yahoo Account Security and generate an app password
+2. In FlowTrack Settings, enter:
+   - SMTP Server: `smtp.mail.yahoo.com`
+   - Port: `587`
+   - Username: your full Yahoo email address
+   - Password: the app password from step 1
+   - Recipient: your email address
+
+### Setup for iCloud Mail
+
+1. Go to [appleid.apple.com](https://appleid.apple.com) → Sign-In and Security → App-Specific Passwords
+2. Generate a new app password
+3. In FlowTrack Settings, enter:
+   - SMTP Server: `smtp.mail.me.com`
+   - Port: `587`
+   - Username: your full iCloud email address
+   - Password: the app-specific password from step 2
+   - Recipient: your email address
+
+### Why "App Password" Instead of My Regular Password?
+
+Most email providers now require two-factor authentication. When that's enabled, you can't use your regular password for apps like FlowTrack. Instead, you generate a special "app password" that works only for this purpose. It's more secure — you can revoke it anytime without changing your main password.
+
+### Don't Want Email Reports?
+
+Just leave the email fields blank. Your reports will still be available in the dashboard under **Activity** and **Weekly Report** in the tray menu.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |

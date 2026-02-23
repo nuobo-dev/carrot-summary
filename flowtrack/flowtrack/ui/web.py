@@ -352,15 +352,20 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     </div>
     <div class="card">
       <h2>Email / Report</h2>
+      <p style="font-size:0.8em;color:var(--muted);margin-bottom:12px">
+        Optional — send your weekly report to your email. For Gmail, use an
+        <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent)">App Password</a>.
+        For Outlook: smtp-mail.outlook.com:587. See README for full setup guide.
+      </p>
       <div class="setting-row">
-        <div class="setting-group"><label>SMTP Server</label><input id="s-smtp"></div>
-        <div class="setting-group"><label>Port</label><input type="number" id="s-port"></div>
+        <div class="setting-group"><label>SMTP Server</label><input id="s-smtp" placeholder="e.g. smtp.gmail.com"></div>
+        <div class="setting-group"><label>Port</label><input type="number" id="s-port" placeholder="587"></div>
       </div>
       <div class="setting-row">
-        <div class="setting-group"><label>Username</label><input id="s-user"></div>
-        <div class="setting-group"><label>Password</label><input type="password" id="s-pass"></div>
+        <div class="setting-group"><label>Username</label><input id="s-user" placeholder="your.email@gmail.com"></div>
+        <div class="setting-group"><label>Password</label><input type="password" id="s-pass" placeholder="App password (not your regular password)"></div>
       </div>
-      <div class="setting-group"><label>Recipient</label><input id="s-to"></div>
+      <div class="setting-group"><label>Recipient</label><input id="s-to" placeholder="where to send reports (can be same as username)"></div>
     </div>
     <div style="text-align:right;margin-top:8px">
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
