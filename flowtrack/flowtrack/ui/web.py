@@ -77,11 +77,15 @@ def create_flask_app() -> Flask:
         for c in s.categories:
             subs = []
             for sub_name, sub_time in sorted(c.sub_categories.items(), key=lambda x: x[1], reverse=True):
-                if sub_name and sub_name != c.category:
-                    subs.append({
-                        "name": sub_name,
-                        "time_str": TextFormatter.format_duration(sub_time),
-                    })
+                # Give generic fallback entries a better label
+                if sub_name == c.category or not sub_name:
+                    display_name = f"General {c.category.lower()}"
+                else:
+                    display_name = sub_name
+                subs.append({
+                    "name": display_name,
+                    "time_str": TextFormatter.format_duration(sub_time),
+                })
             cats.append({
                 "category": c.category,
                 "time": str(c.total_time),

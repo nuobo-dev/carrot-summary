@@ -88,12 +88,49 @@ class MacOSWindowProvider(WindowProvider):
         return self._run_osascript(script)
 
     def _get_window_title(self) -> Optional[str]:
-        """Return the title of the front window of the frontmost app."""
-        script = (
+        """Return the title of the front window of the frontmost app.
+
+        Tries multiple AppleScript approaches since some apps (Electron,
+        Chrome) don't expose window names through the standard path.
+        """
+        # Approach 1: Standard System Events window name
+        script1 = (
             'tell application "System Events" to get name of front window '
             "of first application process whose frontmost is true"
         )
-        return self._run_osascript(script)
+        title = self._run_osascript(script1)
+        if title:
+            return title
+
+        # Approach 2: Get the AXTitle attribute (works for more apps)
+        script2 = (
+            'tell application "System Events"\n'
+            '  set fp to first application process whose frontmost is true\n'
+            '  tell fp\n'
+            '    set w to first window\n'
+            '    return value of attribute "AXTitle" of w\n'
+            '  end tell\n'
+            'end tell'
+        )
+        title = self._run_osascript(script2)
+        if title:
+            return title
+
+        # Approach 3: Ask the app directly for its front window name
+        app_name = self._get_frontmost_app()
+        if app_name:
+            script3 = (
+                f'tell application "{app_name}"\n'
+                f'  if (count of windows) > 0 then\n'
+                f'    return name of front window\n'
+                f'  end if\n'
+                f'end tell'
+            )
+            title = self._run_osascript(script3)
+            if title:
+                return title
+
+        return None
 
     def _get_idle_seconds(self) -> Optional[float]:
         """Query ``ioreg`` for the HID idle time and return it in seconds.
