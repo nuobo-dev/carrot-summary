@@ -194,162 +194,77 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <title>FlowTrack Dashboard</title>
 <style>
   :root { --bg: #f8f9fa; --card: #fff; --accent: #e8724a; --accent2: #5a9a6e;
-          --text: #333; --muted: #888; --border: #e5e5e5; }
+          --text: #333; --muted: #888; --border: #e5e5e5; --active-bg: #fff7f4; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
          background: var(--bg); color: var(--text); line-height: 1.5; }
   .container { max-width: 900px; margin: 0 auto; padding: 20px; }
-  h1 { font-size: 1.4em; font-weight: 600; margin-bottom: 20px; display: flex;
-       align-items: center; gap: 10px; }
-  h1 .carrot { font-size: 1.6em; }
+  h1 { font-size: 1.4em; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
   .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
   .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent;
          margin-bottom: -2px; color: var(--muted); font-weight: 500; font-size: 0.9em; }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab:hover { color: var(--text); }
-  .panel { display: none; }
-  .panel.active { display: block; }
+  .panel { display: none; } .panel.active { display: block; }
   .card { background: var(--card); border-radius: 10px; padding: 20px; margin-bottom: 16px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .card h2 { font-size: 1em; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.75em; }
-  /* Pomodoro timer */
-  .timer-ring { width: 200px; height: 200px; margin: 0 auto 16px; position: relative; }
-  .timer-ring svg { transform: rotate(-90deg); }
-  .timer-ring circle { fill: none; stroke-width: 8; }
-  .timer-ring .bg { stroke: var(--border); }
-  .timer-ring .fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
-  .timer-ring .fg.break { stroke: var(--accent2); }
-  .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                text-align: center; }
-  .timer-text .time { font-size: 2.4em; font-weight: 300; font-variant-numeric: tabular-nums; }
-  .timer-text .label { font-size: 0.8em; color: var(--muted); }
-  .session-info { text-align: center; margin-bottom: 12px; }
-  .session-info .cat { font-weight: 600; font-size: 1.1em; }
-  .session-info .count { color: var(--muted); font-size: 0.85em; }
-  .dots { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
-  .dots .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
-  .dots .dot.filled { background: var(--accent); }
-  /* Todo */
-  .todo-input { display: flex; gap: 8px; margin-bottom: 12px; }
-  .todo-input input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9em; }
-  .todo-input button { padding: 8px 16px; background: var(--accent); color: #fff; border: none;
-                       border-radius: 6px; cursor: pointer; font-size: 0.9em; }
-  .todo-list { list-style: none; }
-  .todo-item { display: flex; align-items: center; gap: 10px; padding: 8px 0;
-               border-bottom: 1px solid var(--border); }
-  .todo-item:last-child { border-bottom: none; }
-  .todo-item.done .todo-title { text-decoration: line-through; color: var(--muted); }
-  .todo-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
-  .todo-title { flex: 1; font-size: 0.9em; }
-  .todo-cat { font-size: 0.75em; color: var(--muted); background: var(--bg); padding: 2px 8px; border-radius: 10px; }
-  .todo-auto { font-size: 0.65em; color: var(--accent2); }
-  .todo-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1em; }
-  .todo-del:hover { color: #e55; }
-  /* Activity table */
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 12px; font-size: 0.9em; }
-  th { color: var(--muted); font-weight: 500; font-size: 0.8em; text-transform: uppercase;
-       border-bottom: 2px solid var(--border); }
-  td { border-bottom: 1px solid var(--border); }
-  .bar { height: 6px; border-radius: 3px; background: var(--accent); }
-  /* Hierarchical activity breakdown */
-  .activity-cat { margin-bottom: 16px; }
-  .activity-cat-header { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
-  .activity-cat-header:hover { opacity: 0.8; }
-  .activity-cat-name { font-weight: 600; font-size: 0.95em; flex: 1; }
-  .activity-cat-time { font-size: 0.9em; color: var(--muted); min-width: 60px; text-align: right; }
-  .activity-cat-sessions { font-size: 0.75em; color: var(--muted); min-width: 70px; text-align: right; }
-  .activity-cat-bar { flex: 0 0 120px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
-  .activity-cat-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
-  .activity-subs { padding-left: 20px; border-left: 2px solid var(--border); margin-left: 8px; }
-  .activity-sub { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 0.85em; color: var(--text); }
-  .activity-sub-name { flex: 1; }
-  .activity-sub-time { color: var(--muted); min-width: 60px; text-align: right; }
-  .activity-sub-bar { flex: 0 0 80px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
-  .activity-sub-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); opacity: 0.6; }
-  .chevron { font-size: 0.7em; color: var(--muted); transition: transform 0.2s; }
-  .chevron.open { transform: rotate(90deg); }
-  /* Settings */
-  .setting-group { margin-bottom: 16px; }
-  .setting-group label { display: block; font-size: 0.8em; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
-  .setting-group input, .setting-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--border);
-    border-radius: 6px; font-size: 0.9em; }
-  .setting-group input[type=number] { width: 120px; }
-  .setting-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-secondary { background: var(--border); color: var(--text); }
-  .btn:hover { opacity: 0.9; }
-  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .status-dot.on { background: var(--accent2); }
-  .status-dot.off { background: var(--muted); }
-  .tracking-toggle { cursor: pointer; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
-                     background: var(--card); font-size: 0.85em; }
-  .flex-between { display: flex; justify-content: space-between; align-items: center; }
-  .paused-list { margin-top: 12px; }
-  .paused-item { font-size: 0.85em; color: var(--muted); padding: 4px 0; }
-  .msg { padding: 8px 12px; background: #e8f5e9; border-radius: 6px; margin-bottom: 12px; font-size: 0.85em; color: #2e7d32; display: none; }
+  .card h2 { font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase;
+             letter-spacing: 0.5px; font-size: 0.75em; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1><span class="carrot">🥕</span> FlowTrack</h1>
+  <h1><span style="font-size:1.6em">🥕</span> FlowTrack</h1>
   <div class="tabs">
-    <div class="tab active" data-tab="timer">Timer</div>
-    <div class="tab" data-tab="todos">Tasks</div>
+    <div class="tab active" data-tab="focus">Focus</div>
     <div class="tab" data-tab="activity">Activity</div>
     <div class="tab" data-tab="settings">Settings</div>
   </div>
 
-  <!-- TIMER -->
-  <div class="panel active" id="panel-timer">
+  <!-- FOCUS (Timer + Tasks combined) -->
+  <div class="panel active" id="panel-focus">
     <div class="card">
-      <div class="flex-between" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2>Pomodoro Timer</h2>
-        <button class="tracking-toggle" onclick="toggleTracking()">
-          <span class="status-dot" id="status-dot"></span>
+        <button id="track-btn" onclick="toggleTracking()" style="cursor:pointer;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:0.85em">
+          <span id="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px"></span>
           <span id="tracking-label">Loading...</span>
         </button>
       </div>
-      <div id="timer-content">
-        <div class="timer-ring">
-          <svg viewBox="0 0 200 200" width="200" height="200">
-            <circle class="bg" cx="100" cy="100" r="90"/>
-            <circle class="fg" id="timer-arc" cx="100" cy="100" r="90"
-                    stroke-dasharray="565.5" stroke-dashoffset="0"/>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative;width:160px;height:160px;flex-shrink:0">
+          <svg viewBox="0 0 200 200" width="160" height="160" style="transform:rotate(-90deg)">
+            <circle fill="none" stroke="var(--border)" stroke-width="10" cx="100" cy="100" r="90"/>
+            <circle id="timer-arc" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"
+                    cx="100" cy="100" r="90" stroke-dasharray="565.5" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"/>
           </svg>
-          <div class="timer-text">
-            <div class="time" id="timer-time">--:--</div>
-            <div class="label" id="timer-label">No session</div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <div id="timer-time" style="font-size:2em;font-weight:300;font-variant-numeric:tabular-nums">--:--</div>
+            <div id="timer-label" style="font-size:0.8em;color:var(--muted)">No session</div>
           </div>
         </div>
-        <div class="session-info">
-          <div class="cat" id="session-cat">-</div>
-          <div class="count" id="session-count">0 sessions completed</div>
+        <div style="flex:1;min-width:200px">
+          <div id="session-cat" style="font-weight:600;font-size:1.1em;margin-bottom:4px">-</div>
+          <div id="session-count" style="color:var(--muted);font-size:0.85em;margin-bottom:8px">0 sessions completed</div>
+          <div id="session-dots" style="display:flex;gap:6px;margin-bottom:12px"></div>
+          <div id="paused-list" style="font-size:0.85em;color:var(--muted)"></div>
         </div>
-        <div class="dots" id="session-dots"></div>
       </div>
-      <div style="text-align:center;margin-top:12px">
-        <input id="task-cat" placeholder="Category" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;width:140px">
-        <input id="task-sub" placeholder="Sub-category" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;width:140px">
-        <button class="btn btn-primary" onclick="startTask()" style="margin-left:4px">Start Task</button>
+      <div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="task-cat" placeholder="Task name" style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.9em">
+        <input id="task-sub" placeholder="Details (optional)" style="flex:1;min-width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.9em">
+        <button onclick="startTask()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.9em;white-space:nowrap">Start Task</button>
       </div>
     </div>
-    <div class="card" id="paused-card" style="display:none">
-      <h2>Paused Sessions</h2>
-      <div id="paused-list"></div>
-    </div>
-  </div>
 
-  <!-- TODOS -->
-  <div class="panel" id="panel-todos">
     <div class="card">
       <h2>Task List</h2>
-      <div class="todo-input">
-        <input id="todo-title" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTodo()">
-        <button onclick="addTodo()">Add</button>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="todo-title" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTodo()"
+               style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.9em">
+        <button onclick="addTodo()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.9em">Add</button>
       </div>
-      <ul class="todo-list" id="todo-list"></ul>
+      <div id="todo-list" style="list-style:none"></div>
     </div>
   </div>
 
@@ -366,46 +281,69 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
   <!-- SETTINGS -->
   <div class="panel" id="panel-settings">
-    <div class="msg" id="settings-msg">Settings saved!</div>
+    <div id="settings-msg" style="padding:8px 12px;background:#e8f5e9;border-radius:6px;margin-bottom:12px;font-size:0.85em;color:#2e7d32;display:none">Settings saved!</div>
     <div class="card">
       <h2>Pomodoro</h2>
-      <div class="setting-row">
-        <div class="setting-group"><label>Work (min)</label><input type="number" id="s-work" min="1" max="120"></div>
-        <div class="setting-group"><label>Short Break (min)</label><input type="number" id="s-short" min="1" max="60"></div>
-        <div class="setting-group"><label>Long Break (min)</label><input type="number" id="s-long" min="1" max="60"></div>
-        <div class="setting-group"><label>Long Break After</label><input type="number" id="s-interval" min="1" max="20"></div>
-      </div>
-      <div class="setting-row" style="margin-top:8px">
-        <div class="setting-group"><label>Debounce (sec)</label><input type="number" id="s-debounce" min="1" max="300"></div>
-        <div class="setting-group"><label>Poll Interval (sec)</label><input type="number" id="s-poll" min="1" max="60"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Work (min)</label><input type="number" id="s-work" min="1" max="120" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Short Break (min)</label><input type="number" id="s-short" min="1" max="60" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Long Break (min)</label><input type="number" id="s-long" min="1" max="60" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Long Break After</label><input type="number" id="s-interval" min="1" max="20" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Debounce (sec)</label><input type="number" id="s-debounce" min="1" max="300" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Poll Interval (sec)</label><input type="number" id="s-poll" min="1" max="60" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
       </div>
     </div>
     <div class="card">
       <h2>Email / Report</h2>
-      <p style="font-size:0.8em;color:var(--muted);margin-bottom:12px">
-        Optional — send your weekly report to your email. For Gmail, use an
-        <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent)">App Password</a>.
-        For Outlook: smtp-mail.outlook.com:587. See README for full setup guide.
-      </p>
-      <div class="setting-row">
-        <div class="setting-group"><label>SMTP Server</label><input id="s-smtp" placeholder="e.g. smtp.gmail.com"></div>
-        <div class="setting-group"><label>Port</label><input type="number" id="s-port" placeholder="587"></div>
+      <p style="font-size:0.8em;color:var(--muted);margin-bottom:12px">Optional — send your weekly report to your email. For Gmail, use an <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent)">App Password</a>. See README for full setup guide.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">SMTP Server</label><input id="s-smtp" placeholder="smtp.gmail.com" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Port</label><input type="number" id="s-port" placeholder="587" style="width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Username</label><input id="s-user" placeholder="your.email@gmail.com" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
+        <div><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Password</label><input type="password" id="s-pass" placeholder="App password" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
       </div>
-      <div class="setting-row">
-        <div class="setting-group"><label>Username</label><input id="s-user" placeholder="your.email@gmail.com"></div>
-        <div class="setting-group"><label>Password</label><input type="password" id="s-pass" placeholder="App password (not your regular password)"></div>
-      </div>
-      <div class="setting-group"><label>Recipient</label><input id="s-to" placeholder="where to send reports (can be same as username)"></div>
+      <div style="margin-top:12px"><label style="display:block;font-size:0.8em;color:var(--muted);margin-bottom:4px">Recipient</label><input id="s-to" placeholder="where to send reports" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px"></div>
     </div>
-    <div style="text-align:right;margin-top:8px">
-      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-    </div>
+    <div style="text-align:right;margin-top:8px"><button onclick="saveSettings()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.9em">Save Settings</button></div>
   </div>
 </div>
 
+<style>
+  .todo-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .todo-item:last-child { border-bottom:none; }
+  .todo-item.done .t-title { text-decoration:line-through; color:var(--muted); }
+  .todo-item.active { background:var(--active-bg); border-radius:6px; padding:8px; margin:-0px -8px; border-bottom:1px solid var(--border); }
+  .todo-item input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
+  .t-title { flex:1; font-size:0.9em; }
+  .t-badge { font-size:0.65em; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+  .t-badge.auto { background:#e8f5e9; color:var(--accent2); }
+  .t-badge.manual { background:#e3f2fd; color:#1976d2; }
+  .t-badge.tracking { background:var(--active-bg); color:var(--accent); font-weight:600; animation:pulse 2s infinite; }
+  .t-cat { font-size:0.75em; color:var(--muted); background:var(--bg); padding:2px 8px; border-radius:10px; }
+  .t-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1em; }
+  .t-del:hover { color:#e55; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .activity-cat { margin-bottom:16px; }
+  .activity-cat-header { display:flex; align-items:center; gap:10px; padding:8px 0; cursor:pointer; }
+  .activity-cat-header:hover { opacity:0.8; }
+  .activity-cat-name { font-weight:600; font-size:0.95em; flex:1; }
+  .activity-cat-time { font-size:0.9em; color:var(--muted); min-width:60px; text-align:right; }
+  .activity-cat-sessions { font-size:0.75em; color:var(--muted); min-width:70px; text-align:right; }
+  .activity-cat-bar { flex:0 0 120px; height:6px; border-radius:3px; background:var(--border); overflow:hidden; }
+  .activity-cat-bar-fill { height:100%; border-radius:3px; background:var(--accent); }
+  .activity-subs { padding-left:20px; border-left:2px solid var(--border); margin-left:8px; }
+  .activity-sub { display:flex; align-items:center; gap:10px; padding:4px 0; font-size:0.85em; }
+  .activity-sub-name { flex:1; }
+  .activity-sub-time { color:var(--muted); min-width:60px; text-align:right; }
+  .activity-sub-bar { flex:0 0 80px; height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
+  .activity-sub-bar-fill { height:100%; border-radius:2px; background:var(--accent); opacity:0.6; }
+  .chevron { font-size:0.7em; color:var(--muted); transition:transform 0.2s; }
+  .chevron.open { transform:rotate(90deg); }
+</style>
+
 <script>
-let config = {};
-const C = 2 * Math.PI * 90; // circumference
+let config = {}, currentSession = null;
+const C = 2 * Math.PI * 90;
 
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
@@ -416,77 +354,75 @@ document.querySelectorAll('.tab').forEach(t => {
   };
 });
 
-async function fetchJSON(url, opts) {
-  const r = await fetch(url, opts);
-  return r.json();
+async function fetchJSON(url, opts) { return (await fetch(url, opts)).json(); }
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function parseDur(s) {
+  let m = 0;
+  const hm = s.match(/(\d+)h/); if (hm) m += parseInt(hm[1]) * 60;
+  const mm = s.match(/(\d+)m/); if (mm) m += parseInt(mm[1]);
+  return m || 1;
 }
 
 async function refreshStatus() {
   try {
     const d = await fetchJSON('/api/status');
-    const dot = document.getElementById('status-dot');
-    const lbl = document.getElementById('tracking-label');
-    dot.className = 'status-dot ' + (d.tracking ? 'on' : 'off');
-    lbl.textContent = d.tracking ? 'Tracking' : 'Stopped';
-
+    document.getElementById('status-dot').style.background = d.tracking ? 'var(--accent2)' : 'var(--muted)';
+    document.getElementById('tracking-label').textContent = d.tracking ? 'Tracking' : 'Stopped';
     const arc = document.getElementById('timer-arc');
-    const timeEl = document.getElementById('timer-time');
-    const labelEl = document.getElementById('timer-label');
-    const catEl = document.getElementById('session-cat');
-    const countEl = document.getElementById('session-count');
-
+    currentSession = d.session;
     if (d.session) {
-      const s = d.session;
-      const rem = s.remaining;
+      const s = d.session, rem = s.remaining;
       const total = s.status === 'break' ? (s.completed_count > 0 && s.completed_count % 4 === 0 ? 900 : 300) : 1500;
-      const pct = Math.max(0, rem / total);
-      arc.style.strokeDashoffset = C * (1 - pct);
-      arc.classList.toggle('break', s.status === 'break');
+      arc.style.strokeDashoffset = C * (1 - Math.max(0, rem / total));
+      arc.style.stroke = s.status === 'break' ? 'var(--accent2)' : 'var(--accent)';
       const m = Math.floor(rem / 60), sec = rem % 60;
-      timeEl.textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
-      labelEl.textContent = s.status === 'break' ? 'Break' : s.status === 'active' ? 'Focus' : s.status;
-      catEl.textContent = s.category + (s.sub_category && s.sub_category !== s.category ? ' / ' + s.sub_category : '');
-      countEl.textContent = s.completed_count + ' session' + (s.completed_count !== 1 ? 's' : '') + ' completed';
-      // dots
+      document.getElementById('timer-time').textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+      document.getElementById('timer-label').textContent = s.status === 'break' ? 'Break' : s.status === 'active' ? 'Focus' : s.status;
+      document.getElementById('session-cat').textContent = s.category + (s.sub_category && s.sub_category !== s.category ? ' / ' + s.sub_category : '');
+      document.getElementById('session-count').textContent = s.completed_count + ' session' + (s.completed_count !== 1 ? 's' : '') + ' completed';
       const dots = document.getElementById('session-dots');
       dots.innerHTML = '';
       for (let i = 0; i < 4; i++) {
-        const d2 = document.createElement('div');
-        d2.className = 'dot' + (i < (s.completed_count % 4 || (s.completed_count > 0 && s.completed_count % 4 === 0 ? 4 : 0)) ? ' filled' : '');
-        dots.appendChild(d2);
+        const dot = document.createElement('div');
+        dot.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' +
+          (i < (s.completed_count % 4 || (s.completed_count > 0 && s.completed_count % 4 === 0 ? 4 : 0)) ? 'var(--accent)' : 'var(--border)');
+        dots.appendChild(dot);
       }
     } else {
       arc.style.strokeDashoffset = C;
-      timeEl.textContent = '--:--';
-      labelEl.textContent = 'No session';
-      catEl.textContent = '-';
-      countEl.textContent = '0 sessions completed';
+      document.getElementById('timer-time').textContent = '--:--';
+      document.getElementById('timer-label').textContent = 'No session';
+      document.getElementById('session-cat').textContent = '-';
+      document.getElementById('session-count').textContent = '0 sessions completed';
       document.getElementById('session-dots').innerHTML = '';
     }
-    // paused
-    const pc = document.getElementById('paused-card');
     const pl = document.getElementById('paused-list');
     if (d.paused_sessions && d.paused_sessions.length > 0) {
-      pc.style.display = '';
-      pl.innerHTML = d.paused_sessions.map(p =>
-        `<div class="paused-item">⏸ ${p.category} — ${Math.floor(p.elapsed/60)}m elapsed, ${p.completed_count} sessions</div>`
-      ).join('');
-    } else { pc.style.display = 'none'; }
+      pl.innerHTML = d.paused_sessions.map(p => `<div style="padding:2px 0">⏸ ${esc(p.category)} — ${Math.floor(p.elapsed/60)}m, ${p.completed_count} sess</div>`).join('');
+    } else { pl.innerHTML = ''; }
+    // Re-render todos to update tracking highlight
+    refreshTodos();
   } catch(e) { console.error(e); }
 }
+</script>
 
+<script>
 async function refreshTodos() {
   const todos = await fetchJSON('/api/todos');
-  const ul = document.getElementById('todo-list');
-  ul.innerHTML = todos.map(t => `
-    <li class="todo-item ${t.done ? 'done' : ''}">
+  const el = document.getElementById('todo-list');
+  const trackingCat = currentSession ? (currentSession.sub_category || currentSession.category) : null;
+  el.innerHTML = todos.map(t => {
+    const isTracking = !t.done && trackingCat && t.title.toLowerCase() === trackingCat.toLowerCase();
+    return `<div class="todo-item ${t.done ? 'done' : ''} ${isTracking ? 'active' : ''}">
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${t.id})">
-      <span class="todo-title">${esc(t.title)}</span>
-      ${t.category ? '<span class="todo-cat">' + esc(t.category) + '</span>' : ''}
-      ${t.auto_generated ? '<span class="todo-auto">auto</span>' : ''}
-      <button class="todo-del" onclick="deleteTodo(${t.id})">×</button>
-    </li>
-  `).join('');
+      <span class="t-title">${esc(t.title)}</span>
+      ${isTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
+      ${t.auto_generated ? '<span class="t-badge auto">auto</span>' : '<span class="t-badge manual">manual</span>'}
+      ${t.category ? '<span class="t-cat">' + esc(t.category) + '</span>' : ''}
+      <button class="t-del" onclick="deleteTodo(${t.id})">×</button>
+    </div>`;
+  }).join('');
 }
 
 async function refreshActivity() {
@@ -504,23 +440,19 @@ async function refreshActivity() {
     const pct = (parseDur(c.time_str) / maxTime * 100).toFixed(0);
     const hasSubs = c.sub_tasks && c.sub_tasks.length > 0;
     const maxSub = hasSubs ? Math.max(...c.sub_tasks.map(s => parseDur(s.time_str)), 1) : 1;
-    html += `<div class="activity-cat">
-      <div class="activity-cat-header" onclick="toggleSubs(${i})">
-        <span class="chevron ${hasSubs ? 'open' : ''}" id="chev-${i}">${hasSubs ? '▶' : '•'}</span>
-        <span class="activity-cat-name">${esc(c.category)}</span>
-        <span class="activity-cat-bar"><span class="activity-cat-bar-fill" style="width:${pct}%"></span></span>
-        <span class="activity-cat-time">${c.time_str}</span>
-        <span class="activity-cat-sessions">${c.sessions} sess</span>
-      </div>`;
+    html += `<div class="activity-cat"><div class="activity-cat-header" onclick="toggleSubs(${i})">
+      <span class="chevron ${hasSubs?'open':''}" id="chev-${i}">${hasSubs?'▶':'•'}</span>
+      <span class="activity-cat-name">${esc(c.category)}</span>
+      <span class="activity-cat-bar"><span class="activity-cat-bar-fill" style="width:${pct}%"></span></span>
+      <span class="activity-cat-time">${c.time_str}</span>
+      <span class="activity-cat-sessions">${c.sessions} sess</span></div>`;
     if (hasSubs) {
       html += `<div class="activity-subs" id="subs-${i}">`;
       c.sub_tasks.forEach(s => {
         const sp = (parseDur(s.time_str) / maxSub * 100).toFixed(0);
-        html += `<div class="activity-sub">
-          <span class="activity-sub-name">${esc(s.name)}</span>
+        html += `<div class="activity-sub"><span class="activity-sub-name">${esc(s.name)}</span>
           <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%"></span></span>
-          <span class="activity-sub-time">${s.time_str}</span>
-        </div>`;
+          <span class="activity-sub-time">${s.time_str}</span></div>`;
       });
       html += '</div>';
     }
@@ -532,25 +464,14 @@ async function refreshActivity() {
 }
 
 function toggleSubs(i) {
-  const el = document.getElementById('subs-' + i);
-  const chev = document.getElementById('chev-' + i);
+  const el = document.getElementById('subs-' + i), chev = document.getElementById('chev-' + i);
   if (!el) return;
-  if (el.style.display === 'none') {
-    el.style.display = '';
-    if (chev) chev.classList.add('open');
-  } else {
-    el.style.display = 'none';
-    if (chev) chev.classList.remove('open');
-  }
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+  if (chev) chev.classList.toggle('open');
 }
+</script>
 
-function parseDur(s) {
-  let m = 0;
-  const hm = s.match(/(\d+)h/); if (hm) m += parseInt(hm[1]) * 60;
-  const mm = s.match(/(\d+)m/); if (mm) m += parseInt(mm[1]);
-  return m || 1;
-}
-
+<script>
 async function loadConfig() {
   config = await fetchJSON('/api/config');
   const p = config.pomodoro || {};
@@ -601,41 +522,30 @@ async function addTodo() {
   refreshTodos();
 }
 
-async function toggleTodo(id) {
-  await fetchJSON(`/api/todos/${id}/toggle`, {method:'POST'});
-  refreshTodos();
-}
-
-async function deleteTodo(id) {
-  await fetchJSON(`/api/todos/${id}`, {method:'DELETE'});
-  refreshTodos();
-}
-
-async function toggleTracking() {
-  await fetchJSON('/api/tracking/toggle', {method:'POST'});
-  refreshStatus();
-}
+async function toggleTodo(id) { await fetchJSON(`/api/todos/${id}/toggle`, {method:'POST'}); refreshTodos(); }
+async function deleteTodo(id) { await fetchJSON(`/api/todos/${id}`, {method:'DELETE'}); refreshTodos(); }
+async function toggleTracking() { await fetchJSON('/api/tracking/toggle', {method:'POST'}); refreshStatus(); }
 
 async function startTask() {
   const cat = document.getElementById('task-cat').value.trim();
   const sub = document.getElementById('task-sub').value.trim();
   if (!cat) { document.getElementById('task-cat').focus(); return; }
+  // Start the pomodoro task
   await fetchJSON('/api/task/start', {method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({category:cat, sub_category:sub})});
+    body:JSON.stringify({category:cat, sub_category:sub || cat})});
+  // Also add to task list as manual task
+  const taskTitle = sub ? cat + ': ' + sub : cat;
+  await fetchJSON('/api/todos', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title: taskTitle, category: cat})});
   document.getElementById('task-cat').value = '';
   document.getElementById('task-sub').value = '';
   refreshStatus();
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// Auto-refresh
 setInterval(refreshStatus, 2000);
 setInterval(refreshActivity, 15000);
-setInterval(refreshTodos, 10000);
 
-// Initial load
-refreshStatus(); refreshTodos(); refreshActivity(); loadConfig();
+refreshStatus(); refreshActivity(); loadConfig();
 </script>
 </body>
 </html>"""
