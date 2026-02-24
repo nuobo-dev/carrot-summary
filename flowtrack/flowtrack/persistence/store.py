@@ -75,12 +75,23 @@ class ActivityStore:
                 category TEXT NOT NULL DEFAULT '',
                 done INTEGER NOT NULL DEFAULT 0,
                 auto_generated INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL
+                parent_id INTEGER DEFAULT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (parent_id) REFERENCES todos(id) ON DELETE SET NULL
             );
             """
         )
         conn.commit()
 
+        # Migrate: add parent_id column if missing (existing DBs)
+        try:
+            conn.execute("SELECT parent_id FROM todos LIMIT 1")
+        except Exception:
+            try:
+                conn.execute("ALTER TABLE todos ADD COLUMN parent_id INTEGER DEFAULT NULL")
+                conn.commit()
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Activity log operations
@@ -191,11 +202,11 @@ class ActivityStore:
     # Todo operations
     # ------------------------------------------------------------------
 
-    def add_todo(self, title: str, category: str = "", auto: bool = False) -> int:
+    def add_todo(self, title: str, category: str = "", auto: bool = False, parent_id: int | None = None) -> int:
         conn = self._get_conn()
         cursor = conn.execute(
-            "INSERT INTO todos (title, category, done, auto_generated, created_at) VALUES (?, ?, 0, ?, ?)",
-            (title, category, 1 if auto else 0, datetime.now().isoformat()),
+            "INSERT INTO todos (title, category, done, auto_generated, parent_id, created_at) VALUES (?, ?, 0, ?, ?, ?)",
+            (title, category, 1 if auto else 0, parent_id, datetime.now().isoformat()),
         )
         conn.commit()
         return cursor.lastrowid  # type: ignore[return-value]
@@ -206,7 +217,17 @@ class ActivityStore:
             rows = conn.execute("SELECT * FROM todos ORDER BY done, id DESC").fetchall()
         else:
             rows = conn.execute("SELECT * FROM todos WHERE done = 0 ORDER BY id DESC").fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            d.setdefault("parent_id", None)
+            result.append(d)
+        return result
+
+    def move_todo(self, todo_id: int, parent_id: int | None) -> None:
+        conn = self._get_conn()
+        conn.execute("UPDATE todos SET parent_id = ? WHERE id = ?", (parent_id, todo_id))
+        conn.commit()
 
     def toggle_todo(self, todo_id: int) -> None:
         conn = self._get_conn()

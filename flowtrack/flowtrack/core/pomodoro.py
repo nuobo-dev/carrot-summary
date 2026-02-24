@@ -126,8 +126,12 @@ class PomodoroManager:
         elif self.active_session.status == SessionStatus.BREAK:
             break_dur = self.get_break_duration(self.active_session.completed_count)
             if self.active_session.elapsed >= break_dur:
-                self.active_session.status = SessionStatus.COMPLETED
+                # Auto-restart: begin next work interval immediately
+                overflow = self.active_session.elapsed - break_dur
+                self.active_session.status = SessionStatus.ACTIVE
+                self.active_session.elapsed = overflow
                 events.append("break_completed")
+                events.append("work_started")
 
         return events
 

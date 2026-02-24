@@ -177,9 +177,25 @@ class Tracker:
             pass
 
         try:
-            self.store.add_todo(sub_category, category, auto=True)
+            # Find a manual parent bucket for this category, or create a general one
+            parent_id = self._find_or_create_bucket(category)
+            self.store.add_todo(sub_category, category, auto=True, parent_id=parent_id)
         except Exception:
             logger.debug("Could not auto-create todo for %s", key)
+
+    def _find_or_create_bucket(self, category: str) -> int | None:
+        """Find a manual work bucket for this category, or create a general one."""
+        try:
+            todos = self.store.get_todos(include_done=True)
+            # Look for an existing manual (non-auto) top-level todo matching this category
+            for t in todos:
+                if not t.get("auto_generated") and not t.get("parent_id") and t.get("category", "").lower() == category.lower():
+                    return t["id"]
+            # No manual bucket found — create a general one
+            bucket_id = self.store.add_todo(f"General: {category}", category, auto=False, parent_id=None)
+            return bucket_id
+        except Exception:
+            return None
 
 
 def _normalize_todo(title: str) -> str:

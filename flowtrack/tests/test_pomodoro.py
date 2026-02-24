@@ -235,23 +235,20 @@ class TestTick:
         # Complete short break (5 min)
         events = pm.tick(_ts(30 * 60))
         assert "break_completed" in events
-        assert pm.active_session.status == SessionStatus.COMPLETED
+        assert "work_started" in events
+        assert pm.active_session.status == SessionStatus.ACTIVE
 
     def test_long_break_after_4_sessions(self):
         pm = PomodoroManager()
         pm.on_activity("Dev", "main.py", T0)
 
-        # Simulate 4 work+break cycles
+        # Simulate 4 work+break cycles (timer auto-restarts after each break)
         t = 0
         for i in range(3):
-            t += 25 * 60  # work
+            t += 25 * 60  # work (25 min)
             pm.tick(_ts(t))
-            t += 5 * 60   # short break
+            t += 5 * 60   # short break (5 min) — auto-restarts next work
             pm.tick(_ts(t))
-            # Reset for next work session
-            pm.active_session.status = SessionStatus.ACTIVE
-            pm.active_session.elapsed = timedelta(0)
-            pm._last_tick = _ts(t)
 
         # 4th work session
         t += 25 * 60

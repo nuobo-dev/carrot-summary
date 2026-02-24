@@ -130,6 +130,15 @@ def create_flask_app() -> Flask:
             _app_ref._store.delete_todo(tid)
         return jsonify({"ok": True})
 
+    @app.route("/api/todos/<int:tid>/move", methods=["POST"])
+    def api_move_todo(tid):
+        if not _app_ref or not _app_ref._store:
+            return jsonify({"error": "not ready"}), 500
+        data = request.json or {}
+        parent_id = data.get("parent_id")  # None = unparent
+        _app_ref._store.move_todo(tid, parent_id)
+        return jsonify({"ok": True})
+
     @app.route("/api/config")
     def api_get_config():
         if not _app_ref:
@@ -322,6 +331,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .t-cat { font-size:0.75em; color:var(--muted); background:var(--bg); padding:2px 8px; border-radius:10px; }
   .t-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1.1em; }
   .t-del:hover { color:#e55; }
+  .bucket { margin-bottom:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .bucket.drag-over { border-color:var(--accent); background:var(--active-bg); }
+  .bucket-header { background:var(--bg); padding:10px 12px; }
+  .bucket-children { padding:0 8px 4px 28px; }
+  .child-item { font-size:0.88em; padding:6px 0; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
   .activity-cat { margin-bottom:16px; }
   .activity-cat-header { display:flex; align-items:center; gap:10px; padding:8px 0; cursor:pointer; }
@@ -435,17 +449,81 @@ async function refreshTodos() {
   const todos = await fetchJSON('/api/todos');
   const el = document.getElementById('todo-list');
   const trackingCat = currentSession ? (currentSession.sub_category || currentSession.category) : null;
-  el.innerHTML = todos.map(t => {
-    const isTracking = !t.done && trackingCat && t.title.toLowerCase() === trackingCat.toLowerCase();
-    return `<div class="todo-item ${t.done ? 'done' : ''} ${isTracking ? 'active' : ''}">
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${t.id})">
-      <span class="t-title">${esc(t.title)}</span>
-      ${isTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
-      ${t.auto_generated ? '<span class="t-badge auto">auto</span>' : '<span class="t-badge manual">manual</span>'}
-      ${t.category ? '<span class="t-cat">' + esc(t.category) + '</span>' : ''}
-      <button class="t-del" onclick="deleteTodo(${t.id})">×</button>
-    </div>`;
-  }).join('');
+
+  // Separate into parents (top-level manual buckets) and children
+  const parents = todos.filter(t => !t.parent_id);
+  const childMap = {};
+  todos.filter(t => t.parent_id).forEach(t => {
+    if (!childMap[t.parent_id]) childMap[t.parent_id] = [];
+    childMap[t.parent_id].push(t);
+  });
+
+  let html = '';
+  parents.forEach(p => {
+    const children = childMap[p.id] || [];
+    const isTracking = !p.done && trackingCat && p.title.toLowerCase() === trackingCat.toLowerCase();
+    html += `<div class="bucket" data-id="${p.id}">
+      <div class="todo-item bucket-header ${p.done ? 'done' : ''} ${isTracking ? 'active' : ''}"
+           ondragover="event.preventDefault();this.parentElement.classList.add('drag-over')"
+           ondragleave="this.parentElement.classList.remove('drag-over')"
+           ondrop="dropTodo(event,${p.id})">
+        <input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleTodo(${p.id})">
+        <span class="t-title" style="font-weight:600">${esc(p.title)}</span>
+        ${isTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
+        <span class="t-badge manual">bucket</span>
+        ${p.category ? '<span class="t-cat">' + esc(p.category) + '</span>' : ''}
+        <span style="color:var(--muted);font-size:0.75em">${children.length} items</span>
+        <button class="t-del" onclick="deleteTodo(${p.id})">×</button>
+      </div>
+      <div class="bucket-children">`;
+    children.forEach(c => {
+      const cTracking = !c.done && trackingCat && c.title.toLowerCase() === trackingCat.toLowerCase();
+      html += `<div class="todo-item child-item ${c.done ? 'done' : ''} ${cTracking ? 'active' : ''}"
+                    draggable="true" ondragstart="dragTodo(event,${c.id})">
+        <span style="color:var(--muted);cursor:grab;margin-right:4px">⠿</span>
+        <input type="checkbox" ${c.done ? 'checked' : ''} onchange="toggleTodo(${c.id})">
+        <span class="t-title">${esc(c.title)}</span>
+        ${cTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
+        <span class="t-badge auto">auto</span>
+        <button class="t-del" onclick="deleteTodo(${c.id})">×</button>
+      </div>`;
+    });
+    html += '</div></div>';
+  });
+
+  // Show orphan auto-tasks (no parent) at the bottom
+  const orphans = todos.filter(t => t.parent_id && !parents.find(p => p.id === t.parent_id));
+  if (orphans.length > 0) {
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+    html += '<div style="font-size:0.75em;color:var(--muted);margin-bottom:4px">Unassigned tasks (drag into a bucket above)</div>';
+    orphans.forEach(c => {
+      const cTracking = !c.done && trackingCat && c.title.toLowerCase() === trackingCat.toLowerCase();
+      html += `<div class="todo-item child-item ${c.done ? 'done' : ''} ${cTracking ? 'active' : ''}"
+                    draggable="true" ondragstart="dragTodo(event,${c.id})">
+        <span style="color:var(--muted);cursor:grab;margin-right:4px">⠿</span>
+        <input type="checkbox" ${c.done ? 'checked' : ''} onchange="toggleTodo(${c.id})">
+        <span class="t-title">${esc(c.title)}</span>
+        ${cTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
+        <span class="t-badge auto">auto</span>
+        <button class="t-del" onclick="deleteTodo(${c.id})">×</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+let draggedTodoId = null;
+function dragTodo(e, id) { draggedTodoId = id; e.dataTransfer.effectAllowed = 'move'; }
+async function dropTodo(e, parentId) {
+  e.preventDefault();
+  e.currentTarget.parentElement.classList.remove('drag-over');
+  if (draggedTodoId && draggedTodoId !== parentId) {
+    await fetchJSON(`/api/todos/${draggedTodoId}/move`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({parent_id:parentId})});
+    refreshTodos();
+  }
+  draggedTodoId = null;
 }
 
 async function refreshActivity() {
