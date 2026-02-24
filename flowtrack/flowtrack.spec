@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for FlowTrack — standalone macOS .app bundle."""
+"""PyInstaller spec for CarrotSummary — standalone macOS .app bundle."""
 
 import platform
 from pathlib import Path
@@ -65,7 +65,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="FlowTrack",
+    name="CarrotSummary",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -82,21 +82,21 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name="FlowTrack",
+    name="CarrotSummary",
 )
 
 if IS_MACOS:
     app = BUNDLE(
         coll,
-        name="FlowTrack.app",
+        name="CarrotSummary.app",
         icon=icon_file,
-        bundle_identifier="com.flowtrack.app",
+        bundle_identifier="com.carrotsummary.app",
         info_plist={
-            "CFBundleDisplayName": "FlowTrack",
+            "CFBundleDisplayName": "CarrotSummary",
             "CFBundleShortVersionString": "1.0.0",
             "LSBackgroundOnly": False,
             "LSUIElement": True,
             "NSHighResolutionCapable": True,
-            "NSAppleEventsUsageDescription": "FlowTrack needs to detect which app is in the foreground.",
+            "NSAppleEventsUsageDescription": "CarrotSummary needs to detect which app is in the foreground.",
         },
     )

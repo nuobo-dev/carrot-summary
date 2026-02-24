@@ -1,4 +1,4 @@
-"""Core data models for FlowTrack.
+"""Core data models for CarrotSummary.
 
 Defines all dataclasses and enums used across the application:
 - Window polling: WindowInfo

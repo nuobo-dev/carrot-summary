@@ -27,5 +27,5 @@ def create_window_provider() -> WindowProvider:
 
     raise OSError(
         f"Unsupported platform: {sys.platform!r}. "
-        "FlowTrack supports macOS (darwin) and Windows (win32)."
+        "CarrotSummary supports macOS (darwin) and Windows (win32)."
     )

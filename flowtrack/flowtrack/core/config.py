@@ -1,10 +1,10 @@
-"""Configuration loader for FlowTrack.
+"""Configuration loader for CarrotSummary.
 
 Handles loading, saving, and default creation of config.json.
 Resolves platform-appropriate data directories:
-  - macOS:   ~/Library/Application Support/FlowTrack
-  - Windows: %APPDATA%/FlowTrack
-  - Other:   ~/.flowtrack
+  - macOS:   ~/Library/Application Support/CarrotSummary
+  - Windows: %APPDATA%/CarrotSummary
+  - Other:   ~/.carrotsummary
 """
 
 import json
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_data_directory() -> Path:
-    """Return the platform-appropriate data directory for FlowTrack."""
+    """Return the platform-appropriate data directory for CarrotSummary."""
     if sys.platform == "darwin":
         base = Path.home() / "Library" / "Application Support"
     elif sys.platform == "win32":
@@ -26,8 +26,8 @@ def get_data_directory() -> Path:
         base = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
     else:
         base = Path.home()
-        return base / ".flowtrack"
-    return base / "FlowTrack"
+        return base / ".carrotsummary"
+    return base / "CarrotSummary"
 
 
 def get_default_config() -> dict[str, Any]:
@@ -128,7 +128,7 @@ def get_default_config() -> dict[str, Any]:
                 "use_tls": True,
             },
         },
-        "database_path": str(data_dir / "flowtrack.db"),
+        "database_path": str(data_dir / "carrotsummary.db"),
     }
 
 

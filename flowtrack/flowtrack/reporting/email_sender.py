@@ -1,4 +1,4 @@
-"""Email delivery for FlowTrack weekly reports.
+"""Email delivery for CarrotSummary weekly reports.
 
 Uses smtplib and email standard library modules to send .docx attachments
 via user-configured SMTP settings. On failure, logs the error and retains

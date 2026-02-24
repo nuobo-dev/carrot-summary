@@ -167,10 +167,10 @@ def test_multiple_named_groups():
         ),
     ]
     analyzer = ContextAnalyzer(rules)
-    result = analyzer.analyze("VSCode", "FlowTrack - main.py", "Development")
+    result = analyzer.analyze("VSCode", "CarrotSummary - main.py", "Development")
     assert result.sub_category == "Python File"
     assert "Python File:" in result.context_label
-    assert "FlowTrack" in result.context_label
+    assert "CarrotSummary" in result.context_label
     assert "main.py" in result.context_label
 
 

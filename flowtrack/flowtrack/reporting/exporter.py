@@ -1,4 +1,4 @@
-"""Report exporter for FlowTrack.
+"""Report exporter for CarrotSummary.
 
 Generates Word (.docx) documents from weekly summary data using python-docx.
 """
@@ -81,7 +81,7 @@ class ReportExporter:
         # Title
         title_para = doc.add_paragraph()
         title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title_para.add_run("FlowTrack Weekly Report")
+        run = title_para.add_run("CarrotSummary Weekly Report")
         run.bold = True
         run.font.size = Pt(24)
 

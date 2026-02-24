@@ -1,4 +1,4 @@
-"""System tray application for FlowTrack.
+"""System tray application for CarrotSummary.
 
 Provides a pystray-based system tray icon with menu items for controlling
 tracking, viewing summaries, opening settings, and quitting. The Tracker
@@ -48,8 +48,8 @@ def _create_default_icon():
     return img
 
 
-class FlowTrackApp:
-    """Main application class that runs FlowTrack as a system tray app."""
+class CarrotSummaryApp:
+    """Main application class that runs CarrotSummary as a system tray app."""
 
     def __init__(self, config_path: str) -> None:
         self.config_path = config_path
@@ -122,7 +122,7 @@ class FlowTrackApp:
             script = (
                 f'display dialog "Settings are stored at:\\n\\n{config_path}\\n\\n'
                 f'Would you like to open the config file?" '
-                f'with title "FlowTrack Settings" '
+                f'with title "CarrotSummary Settings" '
                 f'buttons {{"Cancel", "Open Config"}} default button "Open Config"'
             )
             try:
@@ -165,7 +165,7 @@ class FlowTrackApp:
     # ------------------------------------------------------------------
 
     def _init_components(self) -> None:
-        """Wire up all FlowTrack components from config."""
+        """Wire up all CarrotSummary components from config."""
         config = self.config
 
         # Database
@@ -298,7 +298,7 @@ class FlowTrackApp:
             MenuItem("Quit", lambda: self._quit()),
         )
 
-        self.tray_icon = pystray.Icon("FlowTrack", icon_image, "FlowTrack", menu)
+        self.tray_icon = pystray.Icon("CarrotSummary", icon_image, "CarrotSummary", menu)
         self.tray_icon.run()
 
     def _quit(self) -> None:

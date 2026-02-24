@@ -1,4 +1,4 @@
-"""Tracker orchestrator for FlowTrack.
+"""Tracker orchestrator for CarrotSummary.
 
 Coordinates the polling loop: reads the active window, classifies the
 activity, analyzes context, updates the Pomodoro manager, and persists

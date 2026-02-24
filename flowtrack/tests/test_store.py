@@ -58,9 +58,9 @@ def _make_activity(**overrides) -> ActivityRecord:
         id=0,
         timestamp=datetime(2025, 1, 15, 10, 30, 0),
         app_name="VS Code",
-        window_title="models.py — FlowTrack",
+        window_title="models.py — CarrotSummary",
         category="Development",
-        sub_category="FlowTrack",
+        sub_category="CarrotSummary",
         session_id="sess-001",
     )
     defaults.update(overrides)
@@ -128,7 +128,7 @@ def _make_session(**overrides) -> PomodoroSession:
     defaults = dict(
         id="pomo-001",
         category="Development",
-        sub_category="FlowTrack",
+        sub_category="CarrotSummary",
         start_time=datetime(2025, 1, 15, 10, 0, 0),
         elapsed=timedelta(minutes=12, seconds=30),
         status=SessionStatus.ACTIVE,

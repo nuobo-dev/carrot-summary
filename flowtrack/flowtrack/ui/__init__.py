@@ -1,1 +1,1 @@
-"""User interface components for FlowTrack."""
+"""User interface components for CarrotSummary."""

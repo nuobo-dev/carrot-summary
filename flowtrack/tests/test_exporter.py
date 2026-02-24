@@ -91,7 +91,7 @@ class TestReportExporter:
         doc = Document(out)
         all_text = "\n".join(p.text for p in doc.paragraphs)
 
-        assert "FlowTrack Weekly Report" in all_text
+        assert "CarrotSummary Weekly Report" in all_text
         assert "January 06, 2025" in all_text
         assert "January 12, 2025" in all_text
         assert "Alice Smith" in all_text
@@ -106,7 +106,7 @@ class TestReportExporter:
         doc = Document(out)
         all_text = "\n".join(p.text for p in doc.paragraphs)
 
-        assert "FlowTrack Weekly Report" in all_text
+        assert "CarrotSummary Weekly Report" in all_text
         assert "Prepared for:" not in all_text
 
     def test_weekly_summary_table(self, tmp_path):

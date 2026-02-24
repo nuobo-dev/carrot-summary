@@ -1,4 +1,4 @@
-"""FlowTrack application entry point.
+"""CarrotSummary application entry point.
 
 Supports two modes:
   - GUI mode (default): launches the system tray application
@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI argument parser."""
     parser = argparse.ArgumentParser(
         prog="flowtrack",
-        description="FlowTrack — cross-platform productivity tracker",
+        description="CarrotSummary — cross-platform productivity tracker",
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -72,7 +72,7 @@ def _print_weekly_summary(config: dict) -> None:
 
 
 def main(args: list[str] | None = None) -> None:
-    """Entry point for FlowTrack.
+    """Entry point for CarrotSummary.
 
     When *args* is ``None`` the arguments are read from ``sys.argv``.
     """
@@ -93,9 +93,9 @@ def main(args: list[str] | None = None) -> None:
         _print_weekly_summary(config)
     else:
         # GUI mode — import here to avoid pulling in pystray/tkinter for CLI usage
-        from flowtrack.ui.app import FlowTrackApp
+        from flowtrack.ui.app import CarrotSummaryApp
 
-        app = FlowTrackApp(str(config_path))
+        app = CarrotSummaryApp(str(config_path))
         app.start()
 
 

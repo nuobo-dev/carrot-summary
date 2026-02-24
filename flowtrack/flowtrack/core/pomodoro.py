@@ -1,4 +1,4 @@
-"""Pomodoro Manager for FlowTrack.
+"""Pomodoro Manager for CarrotSummary.
 
 Manages Pomodoro sessions with automatic context-switch detection via
 debounce logic.  Sessions are keyed by Work_Category so that returning

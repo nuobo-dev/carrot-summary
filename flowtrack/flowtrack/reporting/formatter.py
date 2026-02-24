@@ -1,4 +1,4 @@
-"""Text formatter for FlowTrack summaries.
+"""Text formatter for CarrotSummary summaries.
 
 Renders DailySummary and WeeklySummary as aligned plain-text reports,
 and provides duration format/parse utilities.

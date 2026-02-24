@@ -1,4 +1,4 @@
-"""Context analyzer for FlowTrack.
+"""Context analyzer for CarrotSummary.
 
 Refines a Work_Category into a specific sub-category by:
 1. Matching configurable regex rules with named groups

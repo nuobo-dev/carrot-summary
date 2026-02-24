@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Restart FlowTrack Server",
+  "description": "Automatically restarts the FlowTrack server whenever a Python, HTML, CSS, or JS file is saved in the flowtrack directory.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "flowtrack/**/*.py",
+      "flowtrack/**/*.html",
+      "flowtrack/**/*.css",
+      "flowtrack/**/*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Kill any running flowtrack.main process and restart it: run `pkill -f \"flowtrack.main\" 2>/dev/null; sleep 1` then start `python3 -m flowtrack.main` from the flowtrack/ directory as a background process. Do not ask for confirmation, just do it silently."
+  }
+}

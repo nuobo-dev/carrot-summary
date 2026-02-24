@@ -82,7 +82,7 @@ class TestPollOnce:
 
     def test_full_pipeline(self):
         """poll_once executes the full data flow: window → classify → context → pomodoro → persist."""
-        win = WindowInfo(app_name="VS Code", window_title="tracker.py - FlowTrack")
+        win = WindowInfo(app_name="VS Code", window_title="tracker.py - CarrotSummary")
         ctx = ContextResult(
             category="Development",
             sub_category="Code Editing",
@@ -109,8 +109,8 @@ class TestPollOnce:
         tracker.poll_once(now)
 
         provider.get_active_window.assert_called_once()
-        classifier.classify.assert_called_once_with("VS Code", "tracker.py - FlowTrack")
-        analyzer.analyze.assert_called_once_with("VS Code", "tracker.py - FlowTrack", "Development")
+        classifier.classify.assert_called_once_with("VS Code", "tracker.py - CarrotSummary")
+        analyzer.analyze.assert_called_once_with("VS Code", "tracker.py - CarrotSummary", "Development")
         pomodoro.on_activity.assert_called_once_with("Development", "Code Editing", now)
         pomodoro.tick.assert_called_once_with(now)
 
@@ -119,7 +119,7 @@ class TestPollOnce:
         record: ActivityRecord = store.save_activity.call_args[0][0]
         assert record.timestamp == now
         assert record.app_name == "VS Code"
-        assert record.window_title == "tracker.py - FlowTrack"
+        assert record.window_title == "tracker.py - CarrotSummary"
         assert record.category == "Development"
         assert record.sub_category == "Code Editing"
         assert record.session_id == "sess-1"

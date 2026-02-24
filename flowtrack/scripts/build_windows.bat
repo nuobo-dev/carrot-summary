@@ -1,14 +1,14 @@
 @echo off
-REM Build FlowTrack for Windows: .exe + .zip distribution.
+REM Build CarrotSummary for Windows: .exe + .zip distribution.
 REM Usage: scripts\build_windows.bat
-REM Output: dist\FlowTrack.zip
+REM Output: dist\CarrotSummary.zip
 
 setlocal enabledelayedexpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_DIR=%SCRIPT_DIR%.."
 
-echo ==> Building FlowTrack for Windows...
+echo ==> Building CarrotSummary for Windows...
 
 cd /d "%PROJECT_DIR%"
 
@@ -20,32 +20,32 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Verify the dist\FlowTrack directory was created
-if not exist "dist\FlowTrack\" (
-    echo ERROR: dist\FlowTrack directory not found.
+REM Verify the dist\CarrotSummary directory was created
+if not exist "dist\CarrotSummary\" (
+    echo ERROR: dist\CarrotSummary directory not found.
     exit /b 1
 )
 
-echo ==> FlowTrack executable created successfully.
+echo ==> CarrotSummary executable created successfully.
 
 REM ── Step 2: Create .zip distribution ───────────────────────────────
-set "ZIP_PATH=dist\FlowTrack.zip"
+set "ZIP_PATH=dist\CarrotSummary.zip"
 
 REM Remove existing .zip if present
 if exist "%ZIP_PATH%" (
-    echo ==> Removing existing FlowTrack.zip...
+    echo ==> Removing existing CarrotSummary.zip...
     del /f "%ZIP_PATH%"
 )
 
-echo ==> Creating FlowTrack.zip...
-powershell -NoProfile -Command "Compress-Archive -Path 'dist\FlowTrack\*' -DestinationPath '%ZIP_PATH%' -Force"
+echo ==> Creating CarrotSummary.zip...
+powershell -NoProfile -Command "Compress-Archive -Path 'dist\CarrotSummary\*' -DestinationPath '%ZIP_PATH%' -Force"
 if errorlevel 1 (
-    echo ERROR: Failed to create FlowTrack.zip.
+    echo ERROR: Failed to create CarrotSummary.zip.
     exit /b 1
 )
 
 if not exist "%ZIP_PATH%" (
-    echo ERROR: FlowTrack.zip was not created.
+    echo ERROR: CarrotSummary.zip was not created.
     exit /b 1
 )
 

@@ -20,33 +20,33 @@ from flowtrack.core.config import (
 def test_get_data_directory_returns_path():
     result = get_data_directory()
     assert isinstance(result, Path)
-    assert "FlowTrack" in str(result) or ".flowtrack" in str(result)
+    assert "CarrotSummary" in str(result) or ".carrotsummary" in str(result)
 
 
 def test_get_data_directory_macos(monkeypatch):
     monkeypatch.setattr("flowtrack.core.config.sys.platform", "darwin")
     result = get_data_directory()
-    assert result == Path.home() / "Library" / "Application Support" / "FlowTrack"
+    assert result == Path.home() / "Library" / "Application Support" / "CarrotSummary"
 
 
 def test_get_data_directory_windows(monkeypatch):
     monkeypatch.setattr("flowtrack.core.config.sys.platform", "win32")
     monkeypatch.setenv("APPDATA", "/fake/appdata")
     result = get_data_directory()
-    assert result == Path("/fake/appdata") / "FlowTrack"
+    assert result == Path("/fake/appdata") / "CarrotSummary"
 
 
 def test_get_data_directory_windows_no_appdata(monkeypatch):
     monkeypatch.setattr("flowtrack.core.config.sys.platform", "win32")
     monkeypatch.delenv("APPDATA", raising=False)
     result = get_data_directory()
-    assert result == Path.home() / "AppData" / "Roaming" / "FlowTrack"
+    assert result == Path.home() / "AppData" / "Roaming" / "CarrotSummary"
 
 
 def test_get_data_directory_linux(monkeypatch):
     monkeypatch.setattr("flowtrack.core.config.sys.platform", "linux")
     result = get_data_directory()
-    assert result == Path.home() / ".flowtrack"
+    assert result == Path.home() / ".carrotsummary"
 
 
 # ------------------------------------------------------------------

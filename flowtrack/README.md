@@ -1,8 +1,8 @@
-# 🥕 FlowTrack
+# 🥕 CarrotSummary
 
 **A simple app that tracks what you're working on and helps you stay focused.**
 
-FlowTrack sits quietly in your menu bar, watches which apps and windows you use, and organizes your work into categories. It includes a built-in Pomodoro timer, a task list, and a dashboard to see how you spend your day.
+CarrotSummary sits quietly in your menu bar, watches which apps and windows you use, and organizes your work into categories. It includes a built-in Pomodoro timer, a task list, and a dashboard to see how you spend your day.
 
 ---
 
@@ -36,11 +36,11 @@ If you don't have Python installed:
 brew install python@3.13
 ```
 
-### Step 2: Download FlowTrack
+### Step 2: Download CarrotSummary
 
 1. Download or clone this project to your computer
 2. Open **Terminal**
-3. Navigate to the FlowTrack folder:
+3. Navigate to the CarrotSummary folder:
 
 ```
 cd path/to/flowtrack
@@ -48,7 +48,7 @@ cd path/to/flowtrack
 
 (Tip: you can type `cd ` then drag the folder into Terminal to fill in the path)
 
-### Step 3: Install FlowTrack
+### Step 3: Install CarrotSummary
 
 Run these commands one at a time:
 
@@ -58,7 +58,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 4: Launch FlowTrack
+### Step 4: Launch CarrotSummary
 
 ```
 source venv/bin/activate
@@ -69,7 +69,7 @@ That's it! You'll see a small 🥕 carrot icon appear in your menu bar.
 
 ### Step 5: Open the Dashboard
 
-Click the carrot icon in your menu bar and select **Dashboard**. Your browser will open with the FlowTrack dashboard where you can:
+Click the carrot icon in your menu bar and select **Dashboard**. Your browser will open with the CarrotSummary dashboard where you can:
 
 - See the Pomodoro timer counting down
 - View your task list
@@ -87,17 +87,17 @@ Click the carrot icon in your menu bar and select **Dashboard**. Your browser wi
 3. **Important**: Check the box that says "Add Python to PATH" during installation
 4. Click "Install Now"
 
-### Step 2: Download FlowTrack
+### Step 2: Download CarrotSummary
 
 1. Download or clone this project to your computer
 2. Open **Command Prompt** (press `Win + R`, type `cmd`, press Enter)
-3. Navigate to the FlowTrack folder:
+3. Navigate to the CarrotSummary folder:
 
 ```
 cd path\to\flowtrack
 ```
 
-### Step 3: Install FlowTrack
+### Step 3: Install CarrotSummary
 
 Run these commands one at a time:
 
@@ -107,7 +107,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Step 4: Launch FlowTrack
+### Step 4: Launch CarrotSummary
 
 ```
 venv\Scripts\activate
@@ -124,7 +124,7 @@ Click the icon in your system tray and select **Dashboard**.
 
 ## Quick Start Script
 
-For convenience, you can create a shortcut to launch FlowTrack:
+For convenience, you can create a shortcut to launch CarrotSummary:
 
 **Mac** — save this as `start.sh` in the flowtrack folder:
 ```bash
@@ -146,7 +146,7 @@ Double-click `start.bat` to launch.
 
 ---
 
-## Using FlowTrack
+## Using CarrotSummary
 
 ### Menu Bar / System Tray
 
@@ -156,7 +156,7 @@ Click the carrot icon to see options:
 - **Daily Summary** — see today's work breakdown
 - **Weekly Report** — see this week's summary
 - **Add Task** — quickly add a Pomodoro task
-- **Quit** — close FlowTrack
+- **Quit** — close CarrotSummary
 
 ### Dashboard (http://localhost:5555)
 
@@ -171,7 +171,7 @@ The dashboard has four tabs:
 
 ### How Categories Work
 
-FlowTrack automatically sorts your apps into categories:
+CarrotSummary automatically sorts your apps into categories:
 - **Document Editing** — Word, Google Docs, Pages
 - **Email & Communication** — Outlook, Gmail, Mail
 - **Meetings** — Zoom, Teams, Webex
@@ -182,38 +182,38 @@ You can customize these categories in the Settings tab.
 
 ### How the Pomodoro Timer Works
 
-1. FlowTrack detects what you're working on
+1. CarrotSummary detects what you're working on
 2. It starts a 25-minute focus session automatically
 3. When the session ends, you get a 5-minute break
 4. After 4 sessions, you get a 15-minute long break
-5. If you switch to a different type of work, FlowTrack pauses the current session and starts a new one
+5. If you switch to a different type of work, CarrotSummary pauses the current session and starts a new one
 
 ---
 
 ## Troubleshooting
 
 **"Permission denied" on Mac**
-FlowTrack needs permission to see which app is in front. Go to:
+CarrotSummary needs permission to see which app is in front. Go to:
 System Settings → Privacy & Security → Accessibility → Add Terminal (or your terminal app)
 
 **Dashboard won't open**
-Make sure FlowTrack is running, then manually go to http://localhost:5555 in your browser.
+Make sure CarrotSummary is running, then manually go to http://localhost:5555 in your browser.
 
 **No activity showing up**
 Check that tracking is enabled (click the carrot icon — it should say "Stop Tracking" if it's active).
 
 **Want to reset everything?**
-Delete the FlowTrack data folder:
-- Mac: `~/Library/Application Support/FlowTrack/`
-- Windows: `%APPDATA%/FlowTrack/`
+Delete the CarrotSummary data folder:
+- Mac: `~/Library/Application Support/CarrotSummary/`
+- Windows: `%APPDATA%/CarrotSummary/`
 
 ---
 
 ## Your Data
 
 All your data is stored locally on your computer in a SQLite database. Nothing is sent to the internet. The data folder is:
-- **Mac**: `~/Library/Application Support/FlowTrack/`
-- **Windows**: `%APPDATA%/FlowTrack/`
+- **Mac**: `~/Library/Application Support/CarrotSummary/`
+- **Windows**: `%APPDATA%/CarrotSummary/`
 
 ---
 

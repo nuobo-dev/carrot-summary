@@ -1,4 +1,4 @@
-"""Unit tests for the FlowTrackApp system tray application.
+"""Unit tests for the CarrotSummaryApp system tray application.
 
 Since pystray requires a display, all tray-related functionality is mocked.
 Tests focus on correct component wiring, tracking lifecycle, and menu actions.
@@ -17,7 +17,7 @@ from flowtrack.core.models import (
     DailySummary,
     WeeklySummary,
 )
-from flowtrack.ui.app import FlowTrackApp, _create_default_icon
+from flowtrack.ui.app import CarrotSummaryApp, _create_default_icon
 
 
 # ---------------------------------------------------------------------------
@@ -36,8 +36,8 @@ def tmp_config(tmp_path):
 
 @pytest.fixture
 def app(tmp_config):
-    """Create a FlowTrackApp instance with a temp config (no tray/tracking)."""
-    return FlowTrackApp(tmp_config)
+    """Create a CarrotSummaryApp instance with a temp config (no tray/tracking)."""
+    return CarrotSummaryApp(tmp_config)
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ def app(tmp_config):
 # ---------------------------------------------------------------------------
 
 class TestInit:
-    """Tests for FlowTrackApp.__init__ and _init_components."""
+    """Tests for CarrotSummaryApp.__init__ and _init_components."""
 
     def test_loads_config(self, app, tmp_config):
         """App loads config from the given path."""

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Rebuild FlowTrack standalone app after code changes.
+# Rebuild CarrotSummary standalone app after code changes.
 # Usage: ./scripts/rebuild.sh
-# Output: dist/FlowTrack.app and dist/FlowTrack.dmg
+# Output: dist/CarrotSummary.app and dist/CarrotSummary.dmg
 
 set -euo pipefail
 
@@ -10,7 +10,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_DIR"
 
-echo "🥕 Rebuilding FlowTrack..."
+echo "🥕 Rebuilding CarrotSummary..."
 
 # Step 1: Install/update dependencies
 echo "==> Installing dependencies..."
@@ -28,34 +28,34 @@ python3 -m pytest -q --tb=short || {
 echo "==> Building .app bundle..."
 pyinstaller flowtrack.spec --noconfirm --log-level WARN
 
-if [ ! -d "dist/FlowTrack.app" ]; then
-    echo "❌ Build failed — FlowTrack.app not found."
+if [ ! -d "dist/CarrotSummary.app" ]; then
+    echo "❌ Build failed — CarrotSummary.app not found."
     exit 1
 fi
 
 # Step 4: Create .dmg
 echo "==> Creating .dmg installer..."
-rm -f dist/FlowTrack.dmg
+rm -f dist/CarrotSummary.dmg
 hdiutil create \
-    -volname "FlowTrack" \
-    -srcfolder dist/FlowTrack.app \
+    -volname "CarrotSummary" \
+    -srcfolder dist/CarrotSummary.app \
     -ov \
     -format UDZO \
-    dist/FlowTrack.dmg \
+    dist/CarrotSummary.dmg \
     -quiet
 
-if [ ! -f "dist/FlowTrack.dmg" ]; then
-    echo "❌ Failed to create FlowTrack.dmg"
+if [ ! -f "dist/CarrotSummary.dmg" ]; then
+    echo "❌ Failed to create CarrotSummary.dmg"
     exit 1
 fi
 
-APP_SIZE=$(du -sh dist/FlowTrack.app | cut -f1)
-DMG_SIZE=$(du -sh dist/FlowTrack.dmg | cut -f1)
+APP_SIZE=$(du -sh dist/CarrotSummary.app | cut -f1)
+DMG_SIZE=$(du -sh dist/CarrotSummary.dmg | cut -f1)
 
 echo ""
 echo "✅ Build complete!"
-echo "   App:       dist/FlowTrack.app  ($APP_SIZE)"
-echo "   Installer: dist/FlowTrack.dmg  ($DMG_SIZE)"
+echo "   App:       dist/CarrotSummary.app  ($APP_SIZE)"
+echo "   Installer: dist/CarrotSummary.dmg  ($DMG_SIZE)"
 echo ""
-echo "   To test: open dist/FlowTrack.app"
-echo "   To distribute: share dist/FlowTrack.dmg"
+echo "   To test: open dist/CarrotSummary.app"
+echo "   To distribute: share dist/CarrotSummary.dmg"

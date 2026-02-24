@@ -1,4 +1,4 @@
-/* FlowTrack Dashboard JS */
+/* CarrotSummary Dashboard JS */
 let config = {}, currentSession = null;
 const C = 2 * Math.PI * 90;
 let lastRemaining = 0, lastRemainingAt = 0, lastTotal = 1500, lastStatus = null;

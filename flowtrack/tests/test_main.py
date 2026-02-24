@@ -1,4 +1,4 @@
-"""Tests for the FlowTrack main entry point."""
+"""Tests for the CarrotSummary main entry point."""
 
 import os
 import tempfile
@@ -65,7 +65,7 @@ class TestMainDaily:
 class TestMainGUI:
     """Tests for main() in GUI mode (no args)."""
 
-    @patch("flowtrack.ui.app.FlowTrackApp", autospec=True)
+    @patch("flowtrack.ui.app.CarrotSummaryApp", autospec=True)
     @patch("flowtrack.main.load_config")
     @patch("flowtrack.main.get_default_config_path")
     def test_gui_mode_creates_app(self, mock_path, mock_load, MockApp):

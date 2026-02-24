@@ -1,4 +1,4 @@
-# 🥕 Carrot Summary (FlowTrack)
+# 🥕 Carrot Summary (CarrotSummary)
 
 A simple app that tracks what you're working on and helps you stay focused. It sits quietly in your menu bar, watches which apps and windows you use, and organizes your work into categories — with a built-in Pomodoro timer, task list, and dashboard.
 
@@ -19,14 +19,14 @@ A simple app that tracks what you're working on and helps you stay focused. It s
 
 ### Option A: One-Click Install (Recommended)
 
-1. Download `FlowTrack.dmg` from the `flowtrack/dist/` folder
+1. Download `CarrotSummary.dmg` from the `flowtrack/dist/` folder
 2. Double-click the `.dmg` file to open it
-3. Drag **FlowTrack** to your **Applications** folder
-4. Open **FlowTrack** from Applications
+3. Drag **CarrotSummary** to your **Applications** folder
+4. Open **CarrotSummary** from Applications
 
 That's it. A 🥕 carrot icon will appear in your menu bar. Click it and select **Dashboard**.
 
-> **First launch note**: macOS may say "FlowTrack can't be opened because it is from an unidentified developer." If this happens, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+> **First launch note**: macOS may say "CarrotSummary can't be opened because it is from an unidentified developer." If this happens, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
 
 ### Option B: Run from Source (for developers)
 
@@ -44,9 +44,9 @@ python -m flowtrack.main
 
 ### Option A: One-Click Install (Recommended)
 
-1. Download the `FlowTrack.zip` from the `flowtrack/dist/` folder
+1. Download the `CarrotSummary.zip` from the `flowtrack/dist/` folder
 2. Extract the zip file
-3. Double-click **FlowTrack.exe** inside the extracted folder
+3. Double-click **CarrotSummary.exe** inside the extracted folder
 
 An icon will appear in your system tray. Click it and select **Dashboard**.
 
@@ -85,13 +85,13 @@ Open http://localhost:5555 (or click **Dashboard** from the tray menu). Four tab
 - **Daily Summary** — today's breakdown
 - **Weekly Report** — this week's summary
 - **Add Task** — start a manual Pomodoro task
-- **Quit** — close FlowTrack
+- **Quit** — close CarrotSummary
 
 ---
 
 ## Email Reports (Optional)
 
-FlowTrack can email your weekly summary report to you automatically. This is completely optional — if you skip this, reports are still viewable in the dashboard.
+CarrotSummary can email your weekly summary report to you automatically. This is completely optional — if you skip this, reports are still viewable in the dashboard.
 
 To set it up, go to the **Settings** tab in the dashboard and fill in the Email / Report section.
 
@@ -111,7 +111,7 @@ To set it up, go to the **Settings** tab in the dashboard and fill in the Email 
 2. You may need to enable 2-Step Verification first
 3. Create an app password — select "Mail" and "Mac" (or "Other")
 4. Google will give you a 16-character password — copy it
-5. In FlowTrack Settings, enter:
+5. In CarrotSummary Settings, enter:
    - SMTP Server: `smtp.gmail.com`
    - Port: `587`
    - Username: your full Gmail address
@@ -120,7 +120,7 @@ To set it up, go to the **Settings** tab in the dashboard and fill in the Email 
 
 ### Setup for Outlook / Hotmail
 
-1. In FlowTrack Settings, enter:
+1. In CarrotSummary Settings, enter:
    - SMTP Server: `smtp-mail.outlook.com`
    - Port: `587`
    - Username: your full Outlook email address
@@ -130,7 +130,7 @@ To set it up, go to the **Settings** tab in the dashboard and fill in the Email 
 ### Setup for Yahoo Mail
 
 1. Go to Yahoo Account Security and generate an app password
-2. In FlowTrack Settings, enter:
+2. In CarrotSummary Settings, enter:
    - SMTP Server: `smtp.mail.yahoo.com`
    - Port: `587`
    - Username: your full Yahoo email address
@@ -141,7 +141,7 @@ To set it up, go to the **Settings** tab in the dashboard and fill in the Email 
 
 1. Go to [appleid.apple.com](https://appleid.apple.com) → Sign-In and Security → App-Specific Passwords
 2. Generate a new app password
-3. In FlowTrack Settings, enter:
+3. In CarrotSummary Settings, enter:
    - SMTP Server: `smtp.mail.me.com`
    - Port: `587`
    - Username: your full iCloud email address
@@ -150,7 +150,7 @@ To set it up, go to the **Settings** tab in the dashboard and fill in the Email 
 
 ### Why "App Password" Instead of My Regular Password?
 
-Most email providers now require two-factor authentication. When that's enabled, you can't use your regular password for apps like FlowTrack. Instead, you generate a special "app password" that works only for this purpose. It's more secure — you can revoke it anytime without changing your main password.
+Most email providers now require two-factor authentication. When that's enabled, you can't use your regular password for apps like CarrotSummary. Instead, you generate a special "app password" that works only for this purpose. It's more secure — you can revoke it anytime without changing your main password.
 
 ### Don't Want Email Reports?
 
@@ -163,9 +163,9 @@ Just leave the email fields blank. Your reports will still be available in the d
 | Problem | Fix |
 |---------|-----|
 | "Permission denied" on Mac | System Settings → Privacy & Security → Accessibility → add your Terminal app |
-| Dashboard won't open | Make sure FlowTrack is running, then go to http://localhost:5555 |
+| Dashboard won't open | Make sure CarrotSummary is running, then go to http://localhost:5555 |
 | No activity showing | Click the carrot icon — make sure it says "Stop Tracking" (meaning it's active) |
-| Reset everything | Delete `~/Library/Application Support/FlowTrack/` (Mac) or `%APPDATA%/FlowTrack/` (Windows) |
+| Reset everything | Delete `~/Library/Application Support/CarrotSummary/` (Mac) or `%APPDATA%/CarrotSummary/` (Windows) |
 
 ---
 
@@ -173,8 +173,8 @@ Just leave the email fields blank. Your reports will still be available in the d
 
 Everything is stored locally in a SQLite database on your machine. Nothing leaves your computer.
 
-- **Mac**: `~/Library/Application Support/FlowTrack/`
-- **Windows**: `%APPDATA%/FlowTrack/`
+- **Mac**: `~/Library/Application Support/CarrotSummary/`
+- **Windows**: `%APPDATA%/CarrotSummary/`
 
 ---
 
@@ -190,7 +190,7 @@ cd flowtrack
 This script will:
 1. Install/update dependencies
 2. Run all tests (stops if any fail)
-3. Build `dist/FlowTrack.app` via PyInstaller
-4. Package it into `dist/FlowTrack.dmg`
+3. Build `dist/CarrotSummary.app` via PyInstaller
+4. Package it into `dist/CarrotSummary.dmg`
 
-After it finishes, you can test with `open dist/FlowTrack.app` or distribute the `.dmg`.
+After it finishes, you can test with `open dist/CarrotSummary.app` or distribute the `.dmg`.

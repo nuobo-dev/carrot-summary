@@ -1,4 +1,4 @@
-"""Web-based dashboard for FlowTrack.
+"""Web-based dashboard for CarrotSummary.
 
 A lightweight Flask app serving a single-page dashboard with:
 - Settings editor
@@ -21,7 +21,7 @@ from flowtrack.core.models import SessionStatus
 logger = logging.getLogger(__name__)
 
 # Will be set by start_dashboard()
-_app_ref = None  # type: Optional[Any]  # FlowTrackApp
+_app_ref = None  # type: Optional[Any]  # CarrotSummaryApp
 
 
 def create_flask_app() -> Flask:

@@ -1,4 +1,4 @@
-"""Activity classifier for FlowTrack.
+"""Activity classifier for CarrotSummary.
 
 Maps application names and window titles to Work_Categories using
 configurable regex-based rules. Rules are evaluated in order; the

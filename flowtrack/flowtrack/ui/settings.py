@@ -1,4 +1,4 @@
-"""Settings window for FlowTrack.
+"""Settings window for CarrotSummary.
 
 Tabbed settings UI built with tkinter + ttk for cross-platform support.
 Tabs: Email, Categories, Context Rules, Pomodoro.
@@ -71,7 +71,7 @@ class SettingsWindow:
         """Display the settings window with tabs."""
         self._window = tk.Toplevel()
         win = self._window
-        win.title("FlowTrack Settings")
+        win.title("CarrotSummary Settings")
         win.geometry("620x520")
         win.resizable(False, False)
         win.configure(bg="#f5f5f5")

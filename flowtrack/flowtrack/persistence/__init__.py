@@ -1,1 +1,1 @@
-"""Data persistence layer for FlowTrack."""
+"""Data persistence layer for CarrotSummary."""
