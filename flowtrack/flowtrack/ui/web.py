@@ -16,6 +16,8 @@ from typing import Any, Optional
 
 from flask import Flask, jsonify, render_template_string, request
 
+from flowtrack.core.models import SessionStatus
+
 logger = logging.getLogger(__name__)
 
 # Will be set by start_dashboard()
@@ -241,6 +243,44 @@ def create_flask_app() -> Flask:
             _app_ref._toggle_tracking()
         return jsonify({"tracking": _app_ref._tracking if _app_ref else False})
 
+    @app.route("/api/pomodoro/stop", methods=["POST"])
+    def api_pomodoro_stop():
+        """Stop the current pomodoro session and pause tracking."""
+        if not _app_ref or not _app_ref._pomodoro_manager:
+            return jsonify({"error": "not ready"}), 500
+        pm = _app_ref._pomodoro_manager
+        if pm.active_session:
+            pm.active_session.status = SessionStatus.PAUSED
+            pm.paused_sessions[pm.active_session.category] = pm.active_session
+            pm.active_session = None
+            pm._last_tick = None
+        if _app_ref._tracking:
+            _app_ref._stop_tracking()
+        return jsonify({"ok": True})
+
+    @app.route("/api/pomodoro/start", methods=["POST"])
+    def api_pomodoro_start():
+        """Resume tracking (pomodoro resumes on next activity detection)."""
+        if not _app_ref:
+            return jsonify({"error": "not ready"}), 500
+        if not _app_ref._tracking:
+            _app_ref._start_tracking()
+        return jsonify({"ok": True})
+
+    @app.route("/api/pomodoro/skip", methods=["POST"])
+    def api_pomodoro_skip():
+        """Skip current interval, increment completed count, start fresh work interval."""
+        if not _app_ref or not _app_ref._pomodoro_manager:
+            return jsonify({"error": "not ready"}), 500
+        pm = _app_ref._pomodoro_manager
+        if pm.active_session:
+            if pm.active_session.status in (SessionStatus.ACTIVE, SessionStatus.BREAK):
+                pm.active_session.completed_count += 1
+                pm.active_session.status = SessionStatus.ACTIVE
+                pm.active_session.elapsed = timedelta(0)
+                pm._last_tick = datetime.now()
+        return jsonify({"ok": True})
+
     return app
 
 
@@ -334,10 +374,13 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2>Pomodoro Timer</h2>
-        <button id="track-btn" onclick="toggleTracking()" style="cursor:pointer;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-size:0.85em">
-          <span id="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px"></span>
-          <span id="tracking-label">Loading...</span>
-        </button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%"></span>
+          <span id="tracking-label" style="font-size:0.85em;color:var(--muted)">Loading...</span>
+          <button onclick="pomodoroStart()" style="padding:5px 12px;background:var(--accent2);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.8em" title="Start/resume tracking">▶ Start</button>
+          <button onclick="pomodoroStop()" style="padding:5px 12px;background:#e55;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.8em" title="Stop timer and tracking">⏹ Stop</button>
+          <button onclick="pomodoroSkip()" style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.8em" title="Skip to next pomodoro">⏭ Next</button>
+        </div>
       </div>
       <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
         <div style="position:relative;width:160px;height:160px;flex-shrink:0">
@@ -884,6 +927,10 @@ async function addTodo() {
 async function toggleTodo(id) { await fetchJSON(`/api/todos/${id}/toggle`, {method:'POST'}); refreshTodos(); }
 async function deleteTodo(id) { await fetchJSON(`/api/todos/${id}`, {method:'DELETE'}); refreshTodos(); }
 async function toggleTracking() { await fetchJSON('/api/tracking/toggle', {method:'POST'}); refreshStatus(); }
+
+async function pomodoroStart() { await fetchJSON('/api/pomodoro/start', {method:'POST'}); refreshStatus(); }
+async function pomodoroStop() { await fetchJSON('/api/pomodoro/stop', {method:'POST'}); refreshStatus(); }
+async function pomodoroSkip() { await fetchJSON('/api/pomodoro/skip', {method:'POST'}); refreshStatus(); }
 
 async function startTask() {
   const cat = document.getElementById('task-cat').value.trim();
