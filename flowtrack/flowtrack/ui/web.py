@@ -72,33 +72,74 @@ def create_flask_app() -> Flask:
         if not _app_ref or not _app_ref._summary_generator:
             return jsonify({"error": "not ready"})
         from flowtrack.reporting.formatter import TextFormatter
-        s = _app_ref._summary_generator.daily_summary(date.today())
-        cats = []
-        for c in s.categories:
-            subs = []
-            for sub_name, sub_time in sorted(c.sub_categories.items(), key=lambda x: x[1], reverse=True):
-                # Give generic fallback entries a better label
-                if sub_name == c.category or not sub_name:
-                    display_name = f"General {c.category.lower()}"
-                else:
-                    display_name = sub_name
-                subs.append({
-                    "name": display_name,
-                    "time_str": TextFormatter.format_duration(sub_time),
-                })
-            cats.append({
-                "category": c.category,
-                "time": str(c.total_time),
-                "time_str": TextFormatter.format_duration(c.total_time),
-                "sessions": c.completed_sessions,
-                "sub_tasks": subs,
-            })
+        date_str = request.args.get("date")
+        target = date.fromisoformat(date_str) if date_str else date.today()
+        s = _app_ref._summary_generator.daily_summary(target)
+        cats = _build_category_response(s.categories, TextFormatter)
         return jsonify({
             "date": str(s.date),
             "categories": cats,
             "total_time": TextFormatter.format_duration(s.total_time),
             "total_sessions": s.total_sessions,
         })
+
+    @app.route("/api/summary/range")
+    def api_range_summary():
+        """Summary for a date range (for report generation)."""
+        if not _app_ref or not _app_ref._summary_generator:
+            return jsonify({"error": "not ready"})
+        from flowtrack.reporting.formatter import TextFormatter
+        start_str = request.args.get("start")
+        end_str = request.args.get("end")
+        if not start_str or not end_str:
+            return jsonify({"error": "start and end required"}), 400
+        start_d = date.fromisoformat(start_str)
+        end_d = date.fromisoformat(end_str)
+        days = []
+        d = start_d
+        while d <= end_d:
+            ds = _app_ref._summary_generator.daily_summary(d)
+            cats = _build_category_response(ds.categories, TextFormatter)
+            days.append({
+                "date": str(ds.date),
+                "categories": cats,
+                "total_time": TextFormatter.format_duration(ds.total_time),
+                "total_sessions": ds.total_sessions,
+            })
+            d += timedelta(days=1)
+        # Aggregate totals
+        total_sec = sum(ds.total_time.total_seconds() for ds in [_app_ref._summary_generator.daily_summary(start_d + timedelta(days=i)) for i in range((end_d - start_d).days + 1)])
+        total_sess = sum(d2["total_sessions"] for d2 in days)
+        return jsonify({
+            "start": str(start_d), "end": str(end_d),
+            "days": days,
+            "total_time": TextFormatter.format_duration(timedelta(seconds=total_sec)),
+            "total_sessions": total_sess,
+        })
+
+    @app.route("/api/summary/month")
+    def api_month_summary():
+        """Quick overview of which days have activity for calendar rendering."""
+        if not _app_ref or not _app_ref._store:
+            return jsonify({"error": "not ready"})
+        year = int(request.args.get("year", date.today().year))
+        month = int(request.args.get("month", date.today().month))
+        from calendar import monthrange
+        _, num_days = monthrange(year, month)
+        day_totals = {}
+        for day_num in range(1, num_days + 1):
+            d = date(year, month, day_num)
+            if d > date.today():
+                break
+            start_dt = datetime(year, month, day_num)
+            end_dt = start_dt + timedelta(days=1)
+            count = len(_app_ref._store.get_activities(start_dt, end_dt))
+            if count > 0:
+                from flowtrack.reporting.formatter import TextFormatter
+                poll = _app_ref.config.get("poll_interval_seconds", 5)
+                minutes = (count * poll) // 60
+                day_totals[str(d)] = {"count": count, "minutes": minutes}
+        return jsonify({"year": year, "month": month, "days": day_totals})
 
     @app.route("/api/todos")
     def api_todos():
@@ -219,6 +260,40 @@ def start_dashboard(app_ref, port: int = 5555) -> threading.Thread:
 
 
 
+def _build_category_response(categories, TextFormatter):
+    """Build API response for categories, collapsing <5min sub-tasks into 'Other'."""
+    cats = []
+    for c in categories:
+        main_subs = []
+        other_subs = []
+        for sub_name, sub_time in sorted(c.sub_categories.items(), key=lambda x: x[1], reverse=True):
+            display_name = f"General {c.category.lower()}" if (sub_name == c.category or not sub_name) else sub_name
+            minutes = sub_time.total_seconds() / 60
+            entry = {"name": display_name, "time_str": TextFormatter.format_duration(sub_time)}
+            if minutes >= 5:
+                main_subs.append(entry)
+            else:
+                other_subs.append(entry)
+        # Collapse small tasks into a single "Other" entry with expandable detail
+        if other_subs:
+            from datetime import timedelta as td
+            other_total = sum((s.total_seconds() for n, s in c.sub_categories.items()
+                              if s.total_seconds() < 300 and n != c.category), 0)
+            main_subs.append({
+                "name": f"Other ({len(other_subs)} items)",
+                "time_str": TextFormatter.format_duration(td(seconds=other_total)),
+                "collapsed": other_subs,
+            })
+        cats.append({
+            "category": c.category,
+            "time": str(c.total_time),
+            "time_str": TextFormatter.format_duration(c.total_time),
+            "sessions": c.completed_sessions,
+            "sub_tasks": main_subs,
+        })
+    return cats
+
+
 DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -309,12 +384,36 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
   <!-- ACTIVITY -->
   <div class="panel" id="panel-activity">
+    <!-- Calendar -->
     <div class="card">
-      <h2>Today's Activity</h2>
-      <div id="activity-breakdown"></div>
-      <div style="margin-top:12px;text-align:right;color:var(--muted);font-size:0.85em">
-        Total: <strong id="activity-total">0m</strong> &middot; <span id="activity-sessions">0</span> sessions
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <button onclick="calPrev()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer">◀</button>
+        <span id="cal-title" style="font-weight:600"></span>
+        <button onclick="calNext()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer">▶</button>
       </div>
+      <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:0.8em"></div>
+    </div>
+    <!-- Day detail -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 id="activity-date-label" style="margin-bottom:0">Today's Activity</h2>
+        <div style="color:var(--muted);font-size:0.85em">
+          Total: <strong id="activity-total">0m</strong> &middot; <span id="activity-sessions">0</span> sessions
+        </div>
+      </div>
+      <div id="activity-breakdown"></div>
+    </div>
+    <!-- Report generator -->
+    <div class="card">
+      <h2>Generate Report</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:0.8em;color:var(--muted)">From</label>
+        <input type="date" id="report-start" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.85em">
+        <label style="font-size:0.8em;color:var(--muted)">To</label>
+        <input type="date" id="report-end" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.85em">
+        <button onclick="generateReport()" style="padding:6px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85em">Generate</button>
+      </div>
+      <div id="report-output" style="margin-top:12px;display:none"></div>
     </div>
   </div>
 
@@ -383,6 +482,15 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .activity-sub-bar-fill { height:100%; border-radius:2px; background:var(--accent); opacity:0.6; }
   .chevron { font-size:0.7em; color:var(--muted); transition:transform 0.2s; }
   .chevron.open { transform:rotate(90deg); }
+  .cal-day { padding:6px 2px; border-radius:6px; cursor:pointer; position:relative; }
+  .cal-day:hover { background:var(--border); }
+  .cal-day.today { font-weight:700; color:var(--accent); }
+  .cal-day.selected { background:var(--accent); color:#fff; border-radius:6px; }
+  .cal-day.has-data::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:var(--accent2); }
+  .cal-day.empty { color:var(--border); cursor:default; }
+  .cal-header { font-weight:600; color:var(--muted); font-size:0.7em; padding:4px 0; }
+  .collapsed-toggle { cursor:pointer; color:var(--accent); font-size:0.8em; margin-left:8px; }
 </style>
 
 <script>
@@ -583,11 +691,18 @@ async function clearAutoTodos() {
   refreshTodos();
 }
 
-async function refreshActivity() {
-  const d = await fetchJSON('/api/summary/daily');
+let selectedDate = new Date().toISOString().split('T')[0];
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth() + 1;
+
+async function loadActivity(dateStr) {
+  selectedDate = dateStr || new Date().toISOString().split('T')[0];
+  const d = await fetchJSON('/api/summary/daily?date=' + selectedDate);
   const container = document.getElementById('activity-breakdown');
+  const label = document.getElementById('activity-date-label');
+  const dt = new Date(selectedDate + 'T12:00:00');
+  label.textContent = dt.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
   if (!d.categories || d.categories.length === 0) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:0.9em">No activity recorded yet today.</p>';
+    container.innerHTML = '<p style="color:var(--muted);font-size:0.9em">No activity recorded.</p>';
     document.getElementById('activity-total').textContent = '0m';
     document.getElementById('activity-sessions').textContent = '0';
     return;
@@ -606,11 +721,20 @@ async function refreshActivity() {
       <span class="activity-cat-sessions">${c.sessions} sess</span></div>`;
     if (hasSubs) {
       html += `<div class="activity-subs" id="subs-${i}">`;
-      c.sub_tasks.forEach(s => {
+      c.sub_tasks.forEach((s, si) => {
         const sp = (parseDur(s.time_str) / maxSub * 100).toFixed(0);
         html += `<div class="activity-sub"><span class="activity-sub-name">${esc(s.name)}</span>
           <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%"></span></span>
-          <span class="activity-sub-time">${s.time_str}</span></div>`;
+          <span class="activity-sub-time">${s.time_str}</span>`;
+        if (s.collapsed && s.collapsed.length > 0) {
+          html += `<span class="collapsed-toggle" onclick="document.getElementById('col-${i}-${si}').style.display=document.getElementById('col-${i}-${si}').style.display==='none'?'':'none'">▾</span>`;
+          html += `<div id="col-${i}-${si}" style="display:none;padding-left:16px;margin-top:4px">`;
+          s.collapsed.forEach(cc => {
+            html += `<div style="font-size:0.8em;color:var(--muted);padding:1px 0">${esc(cc.name)} — ${cc.time_str}</div>`;
+          });
+          html += '</div>';
+        }
+        html += '</div>';
       });
       html += '</div>';
     }
@@ -621,11 +745,62 @@ async function refreshActivity() {
   document.getElementById('activity-sessions').textContent = d.total_sessions;
 }
 
+async function refreshActivity() { loadActivity(selectedDate); }
+
 function toggleSubs(i) {
   const el = document.getElementById('subs-' + i), chev = document.getElementById('chev-' + i);
   if (!el) return;
   el.style.display = el.style.display === 'none' ? '' : 'none';
   if (chev) chev.classList.toggle('open');
+}
+
+// Calendar
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+async function renderCalendar() {
+  const grid = document.getElementById('cal-grid');
+  const title = document.getElementById('cal-title');
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  title.textContent = monthNames[calMonth-1] + ' ' + calYear;
+  const data = await fetchJSON(`/api/summary/month?year=${calYear}&month=${calMonth}`);
+  let html = DAYS.map(d => `<div class="cal-header">${d}</div>`).join('');
+  const firstDay = new Date(calYear, calMonth-1, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date().toISOString().split('T')[0];
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasData = data.days && data.days[ds];
+    const isToday = ds === today;
+    const isSel = ds === selectedDate;
+    const mins = hasData ? data.days[ds].minutes : 0;
+    const tip = hasData ? `${mins}m tracked` : '';
+    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''} ${hasData?'has-data':''}" onclick="selectDay('${ds}')" title="${tip}">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+function calPrev() { calMonth--; if(calMonth<1){calMonth=12;calYear--;} renderCalendar(); }
+function calNext() { calMonth++; if(calMonth>12){calMonth=1;calYear++;} renderCalendar(); }
+function selectDay(ds) { selectedDate = ds; loadActivity(ds); renderCalendar(); }
+
+// Report
+async function generateReport() {
+  const start = document.getElementById('report-start').value;
+  const end = document.getElementById('report-end').value;
+  if (!start || !end) { alert('Select both start and end dates'); return; }
+  const out = document.getElementById('report-output');
+  out.style.display = 'block';
+  out.innerHTML = '<p style="color:var(--muted)">Generating...</p>';
+  const d = await fetchJSON(`/api/summary/range?start=${start}&end=${end}`);
+  let html = `<div style="font-weight:600;margin-bottom:8px">${start} to ${end} — ${d.total_time}, ${d.total_sessions} sessions</div>`;
+  d.days.forEach(day => {
+    if (day.total_time === '0m') return;
+    html += `<div style="margin-bottom:8px"><div style="font-weight:500;font-size:0.85em;color:var(--text)">${day.date} — ${day.total_time}</div>`;
+    day.categories.forEach(c => {
+      html += `<div style="font-size:0.8em;color:var(--muted);padding-left:12px">${c.category}: ${c.time_str}</div>`;
+    });
+    html += '</div>';
+  });
+  out.innerHTML = html;
 }
 </script>
 
@@ -711,7 +886,10 @@ setInterval(function() {
   updateTimerDisplay(interpolated, lastTotal, lastStatus);
 }, 1000);
 
-refreshStatus(); refreshActivity(); loadConfig();
+refreshStatus(); refreshActivity(); loadConfig(); renderCalendar();
+// Set default report dates
+document.getElementById('report-start').value = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+document.getElementById('report-end').value = new Date().toISOString().split('T')[0];
 </script>
 </body>
 </html>"""
