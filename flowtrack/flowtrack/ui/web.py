@@ -587,6 +587,13 @@ async function refreshTodos() {
   const todos = await fetchJSON('/api/todos');
   const el = document.getElementById('todo-list');
   const trackingCat = currentSession ? (currentSession.sub_category || currentSession.category) : null;
+  const trackingCategory = currentSession ? currentSession.category : null;
+
+  function isTaskTracked(title) {
+    if (!trackingCat || !title) return false;
+    const t = title.toLowerCase(), tc = trackingCat.toLowerCase(), tcat = (trackingCategory||'').toLowerCase();
+    return t === tc || t === tcat || tc.includes(t) || t.includes(tc);
+  }
 
   // Separate into parents (top-level manual buckets) and children
   const parents = todos.filter(t => !t.parent_id);
@@ -599,7 +606,8 @@ async function refreshTodos() {
   let html = '';
   parents.forEach(p => {
     const children = childMap[p.id] || [];
-    const isTracking = !p.done && trackingCat && p.title.toLowerCase() === trackingCat.toLowerCase();
+    const anyChildTracked = children.some(c => !c.done && isTaskTracked(c.title));
+    const isTracking = !p.done && (isTaskTracked(p.title) || anyChildTracked);
     html += `<div class="bucket" data-id="${p.id}" draggable="true"
                   ondragstart="dragBucket(event,${p.id})"
                   ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -617,7 +625,7 @@ async function refreshTodos() {
       </div>
       <div class="bucket-children">`;
     children.forEach(c => {
-      const cTracking = !c.done && trackingCat && c.title.toLowerCase() === trackingCat.toLowerCase();
+      const cTracking = !c.done && isTaskTracked(c.title);
       html += `<div class="todo-item child-item ${c.done ? 'done' : ''} ${cTracking ? 'active' : ''}"
                     draggable="true" ondragstart="dragTodo(event,${c.id})">
         <span style="color:var(--muted);cursor:grab;margin-right:4px">⠿</span>
@@ -637,7 +645,7 @@ async function refreshTodos() {
     html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
     html += '<div style="font-size:0.75em;color:var(--muted);margin-bottom:4px">Unassigned tasks (drag into a bucket above)</div>';
     orphans.forEach(c => {
-      const cTracking = !c.done && trackingCat && c.title.toLowerCase() === trackingCat.toLowerCase();
+      const cTracking = !c.done && isTaskTracked(c.title);
       html += `<div class="todo-item child-item ${c.done ? 'done' : ''} ${cTracking ? 'active' : ''}"
                     draggable="true" ondragstart="dragTodo(event,${c.id})">
         <span style="color:var(--muted);cursor:grab;margin-right:4px">⠿</span>
