@@ -54,10 +54,13 @@ class TestGetActiveWindow:
 
     @patch("flowtrack.platform.macos.subprocess.run")
     def test_falls_back_to_app_name_when_title_unavailable(self, mock_run):
-        """If the window title query fails, use app name as title."""
+        """If all window title approaches fail, use app name as title."""
         mock_run.side_effect = [
-            _completed(stdout="Finder\n"),
-            _completed(returncode=1, stderr="no window"),
+            _completed(stdout="Finder\n"),       # _get_frontmost_app
+            _completed(returncode=1, stderr="no window"),  # approach 1: System Events window name
+            _completed(returncode=1, stderr="no AXTitle"),  # approach 2: AXTitle
+            _completed(stdout="Finder\n"),       # approach 3: _get_frontmost_app (for app name)
+            _completed(returncode=1, stderr="no window"),  # approach 3: ask app directly
         ]
         provider = MacOSWindowProvider()
         info = provider.get_active_window()

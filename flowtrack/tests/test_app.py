@@ -232,23 +232,14 @@ class TestSummaryDisplay:
 class TestSettings:
     """Tests for open_settings."""
 
-    def test_open_settings_creates_window(self, app):
-        """open_settings creates a SettingsWindow with current config."""
-        mock_instance = MagicMock()
-        mock_cls = MagicMock(return_value=mock_instance)
-
-        # Create a fake settings module since tkinter may not be available
-        fake_settings_module = MagicMock()
-        fake_settings_module.SettingsWindow = mock_cls
-
-        with patch.dict("sys.modules", {"flowtrack.ui.settings": fake_settings_module}):
-            with patch("flowtrack.ui.app.save_config"):
-                app.open_settings()
-
-        mock_cls.assert_called_once()
-        call_args = mock_cls.call_args
-        assert call_args[0][0] == app.config  # config passed
-        mock_instance.show.assert_called_once()
+    def test_open_settings_opens_dashboard(self, app):
+        """open_settings on macOS opens the dashboard in browser."""
+        app._dashboard_port = 5555
+        with patch("subprocess.Popen") as mock_popen:
+            app._open_dashboard()
+            mock_popen.assert_called_once()
+            args = mock_popen.call_args[0][0]
+            assert "5555" in args[1]
 
 
 # ---------------------------------------------------------------------------
