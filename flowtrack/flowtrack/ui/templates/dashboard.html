@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowTrack</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <span class="logo">🥕</span>
+    <span class="logo-text">FlowTrack</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="focus">Focus</button>
+    <button class="tab" data-tab="activity">Activity</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </nav>
+
+  <!-- FOCUS -->
+  <section class="panel active" id="panel-focus">
+    <div class="card">
+      <div class="card-header">
+        <h2>Pomodoro</h2>
+        <div class="controls">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="tracking-label" class="status-label">Loading...</span>
+          <button class="btn btn-start" onclick="pomodoroStart()" title="Start">▶</button>
+          <button class="btn btn-stop" onclick="pomodoroStop()" title="Stop">⏹</button>
+          <button class="btn btn-skip" onclick="pomodoroSkip()" title="Next">⏭</button>
+        </div>
+      </div>
+
+      <div class="timer-row">
+        <div class="timer-ring">
+          <svg viewBox="0 0 200 200" width="150" height="150">
+            <circle class="ring-bg" cx="100" cy="100" r="90"/>
+            <circle id="timer-arc" class="ring-fg" cx="100" cy="100" r="90"
+                    stroke-dasharray="565.5" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-center">
+            <div id="timer-time" class="timer-digits">--:--</div>
+            <div id="timer-label" class="timer-mode">No session</div>
+          </div>
+        </div>
+        <div class="timer-info">
+          <div id="session-cat" class="session-category">—</div>
+          <div id="session-count" class="session-count">0 sessions completed</div>
+          <div id="session-dots" class="dots"></div>
+          <div id="paused-list" class="paused-list"></div>
+        </div>
+      </div>
+
+      <div class="start-task-row">
+        <input id="task-cat" class="input" placeholder="Task name">
+        <input id="task-sub" class="input" placeholder="Details (optional)">
+        <button class="btn btn-primary" onclick="startTask()">Start Task</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Tasks</h2>
+        <div class="controls">
+          <button class="btn btn-ghost btn-sm" onclick="clearAutoTodos()">Clear Auto</button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllTodos()">Clear All</button>
+        </div>
+      </div>
+      <div class="task-input-row">
+        <input id="todo-title" class="input" placeholder="Add a work bucket..." onkeydown="if(event.key==='Enter')addTodo()">
+        <button class="btn btn-primary" onclick="addTodo()">Add</button>
+      </div>
+      <div id="todo-list"></div>
+    </div>
+  </section>
+
+  <!-- ACTIVITY -->
+  <section class="panel" id="panel-activity">
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-ghost btn-sm" onclick="calPrev()">◀</button>
+        <span id="cal-title" class="cal-title"></span>
+        <button class="btn btn-ghost btn-sm" onclick="calNext()">▶</button>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 id="activity-date-label">Today</h2>
+        <div class="meta">
+          <strong id="activity-total">0m</strong> · <span id="activity-sessions">0</span> sessions
+        </div>
+      </div>
+      <div id="activity-breakdown"></div>
+    </div>
+
+    <div class="card">
+      <h2>Generate Report</h2>
+      <div class="report-row">
+        <label class="label-sm">From</label>
+        <input type="date" id="report-start" class="input input-sm">
+        <label class="label-sm">To</label>
+        <input type="date" id="report-end" class="input input-sm">
+        <button class="btn btn-primary btn-sm" onclick="generateReport()">Generate</button>
+      </div>
+      <div id="report-output" class="report-output"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="panel" id="panel-settings">
+    <div id="settings-msg" class="toast">Settings saved</div>
+    <div class="card">
+      <h2>Pomodoro</h2>
+      <div class="settings-grid">
+        <div class="field"><label>Work (min)</label><input type="number" id="s-work" class="input input-sm" min="1" max="120"></div>
+        <div class="field"><label>Short Break (min)</label><input type="number" id="s-short" class="input input-sm" min="1" max="60"></div>
+        <div class="field"><label>Long Break (min)</label><input type="number" id="s-long" class="input input-sm" min="1" max="60"></div>
+        <div class="field"><label>Long Break After</label><input type="number" id="s-interval" class="input input-sm" min="1" max="20"></div>
+        <div class="field"><label>Debounce (sec)</label><input type="number" id="s-debounce" class="input input-sm" min="1" max="300"></div>
+        <div class="field"><label>Poll Interval (sec)</label><input type="number" id="s-poll" class="input input-sm" min="1" max="60"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Email / Report</h2>
+      <p class="hint">Optional. For Gmail use an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>.</p>
+      <div class="settings-grid">
+        <div class="field"><label>SMTP Server</label><input id="s-smtp" class="input" placeholder="smtp.gmail.com"></div>
+        <div class="field"><label>Port</label><input type="number" id="s-port" class="input input-sm" placeholder="587"></div>
+        <div class="field"><label>Username</label><input id="s-user" class="input" placeholder="you@gmail.com"></div>
+        <div class="field"><label>Password</label><input type="password" id="s-pass" class="input" placeholder="App password"></div>
+      </div>
+      <div class="field" style="margin-top:8px"><label>Recipient</label><input id="s-to" class="input" placeholder="where to send reports"></div>
+    </div>
+    <div style="text-align:right;margin-top:8px">
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </section>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
