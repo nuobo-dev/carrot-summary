@@ -336,3 +336,54 @@ class TestEdgeCases:
         pm = PomodoroManager()
         pm.on_activity("Dev", "main.py", T0)
         assert pm.active_session.completed_count == 0
+
+
+# ------------------------------------------------------------------
+# active_task_id propagation to sessions (Req 3.5)
+# ------------------------------------------------------------------
+
+class TestActiveTaskId:
+    def test_new_session_carries_active_task_id(self):
+        pm = PomodoroManager()
+        pm.active_task_id = 42
+        pm.on_activity("Dev", "main.py", T0)
+        assert pm.active_session.active_task_id == 42
+
+    def test_new_session_carries_none_when_no_task(self):
+        pm = PomodoroManager()
+        pm.on_activity("Dev", "main.py", T0)
+        assert pm.active_session.active_task_id is None
+
+    def test_resumed_session_updates_active_task_id(self):
+        pm = PomodoroManager(debounce_seconds=10)
+        pm.active_task_id = 10
+        pm.on_activity("Dev", "main.py", T0)
+
+        # Switch to Email
+        pm.on_activity("Email", "Inbox", _ts(5))
+        pm.on_activity("Email", "Inbox", _ts(15))
+
+        # Change active task and switch back to Dev
+        pm.active_task_id = 20
+        pm.on_activity("Dev", "main.py", _ts(20))
+        pm.on_activity("Dev", "main.py", _ts(30))
+
+        assert pm.active_session.category == "Dev"
+        assert pm.active_session.active_task_id == 20
+
+    def test_context_switch_new_session_gets_current_task_id(self):
+        pm = PomodoroManager(debounce_seconds=10)
+        pm.active_task_id = 5
+        pm.on_activity("Dev", "main.py", T0)
+
+        # Switch to Email (new session)
+        pm.active_task_id = 7
+        pm.on_activity("Email", "Inbox", _ts(5))
+        pm.on_activity("Email", "Inbox", _ts(15))
+
+        assert pm.active_session.category == "Email"
+        assert pm.active_session.active_task_id == 7
+
+    def test_active_task_id_default_is_none(self):
+        pm = PomodoroManager()
+        assert pm.active_task_id is None

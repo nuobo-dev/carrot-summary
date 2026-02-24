@@ -26,6 +26,7 @@ class PomodoroManager:
         self.paused_sessions: dict[str, PomodoroSession] = {}  # keyed by category
         self.pending_switch: Optional[tuple[str, str, datetime]] = None  # (category, sub_cat, detected_at)
         self._last_tick: Optional[datetime] = None
+        self.active_task_id: Optional[int] = None  # set by Tracker from current_active_task_id
 
     # ------------------------------------------------------------------
     # Public API
@@ -156,6 +157,7 @@ class PomodoroManager:
         if category in self.paused_sessions:
             session = self.paused_sessions.pop(category)
             session.status = SessionStatus.ACTIVE
+            session.active_task_id = self.active_task_id
             self.active_session = session
             self._last_tick = timestamp
             events.append("session_resumed")
@@ -168,6 +170,7 @@ class PomodoroManager:
                 elapsed=timedelta(0),
                 status=SessionStatus.ACTIVE,
                 completed_count=0,
+                active_task_id=self.active_task_id,
             )
             self._last_tick = timestamp
             events.append("session_started")

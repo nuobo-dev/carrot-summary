@@ -181,6 +181,111 @@ class TestPollOnce:
         record: ActivityRecord = store.save_activity.call_args[0][0]
         assert record.id == 0
 
+    def test_active_task_id_propagated_to_record(self):
+        """When current_active_task_id is set, the ActivityRecord carries that ID (Req 1.2, 14.7)."""
+        win = WindowInfo(app_name="Chrome", window_title="Tickets Portal - Auth Issue")
+        ctx = ContextResult(
+            category="Research & Browsing",
+            sub_category="Tickets",
+            context_label="Tickets: Auth Issue",
+            activity_summary="researched authentication issue",
+        )
+        tracker, provider, classifier, analyzer, pomodoro, store = _make_tracker(
+            window_info=win,
+            category="Research & Browsing",
+            context_result=ctx,
+            active_session=None,
+        )
+        tracker.current_active_task_id = 42
+
+        tracker.poll_once(datetime(2025, 6, 1, 14, 0))
+
+        record: ActivityRecord = store.save_activity.call_args[0][0]
+        assert record.active_task_id == 42
+
+    def test_active_task_id_none_when_no_task_selected(self):
+        """When no current_active_task_id is set, the ActivityRecord has active_task_id=None (Req 14.4)."""
+        win = WindowInfo(app_name="Notepad", window_title="Untitled")
+        tracker, provider, classifier, analyzer, pomodoro, store = _make_tracker(
+            window_info=win,
+            category="Other",
+            active_session=None,
+        )
+        # current_active_task_id defaults to None
+
+        tracker.poll_once(datetime(2025, 6, 1, 14, 0))
+
+        record: ActivityRecord = store.save_activity.call_args[0][0]
+        assert record.active_task_id is None
+
+    def test_active_task_id_propagated_to_pomodoro_manager(self):
+        """Tracker sets pomodoro_manager.active_task_id before on_activity (Req 3.5)."""
+        win = WindowInfo(app_name="Chrome", window_title="Tickets Portal")
+        tracker, provider, classifier, analyzer, pomodoro, store = _make_tracker(
+            window_info=win,
+            category="Research & Browsing",
+            active_session=None,
+        )
+        tracker.current_active_task_id = 99
+
+        # Track what active_task_id was set to before on_activity was called
+        captured_task_id = []
+
+        def capture_on_activity(*args, **kwargs):
+            captured_task_id.append(pomodoro.active_task_id)
+            return []
+
+        pomodoro.on_activity.side_effect = capture_on_activity
+
+        tracker.poll_once(datetime(2025, 6, 1, 14, 0))
+
+        assert captured_task_id == [99]
+
+    def test_activity_summary_propagated_from_context(self):
+        """The activity_summary from ContextResult is set on the ActivityRecord (Req 14.2, 14.3)."""
+        win = WindowInfo(app_name="VS Code", window_title="auth.py - MyProject")
+        ctx = ContextResult(
+            category="Development",
+            sub_category="Code Editing",
+            context_label="Code Editing: auth.py",
+            activity_summary="edited auth.py in MyProject",
+        )
+        tracker, provider, classifier, analyzer, pomodoro, store = _make_tracker(
+            window_info=win,
+            category="Development",
+            context_result=ctx,
+            active_session=None,
+        )
+        tracker.current_active_task_id = 7
+
+        tracker.poll_once(datetime(2025, 6, 1, 15, 0))
+
+        record: ActivityRecord = store.save_activity.call_args[0][0]
+        assert record.activity_summary == "edited auth.py in MyProject"
+        assert record.active_task_id == 7
+
+    def test_activity_summary_empty_when_context_has_none(self):
+        """When ContextResult has no activity_summary, the record gets an empty string."""
+        win = WindowInfo(app_name="Finder", window_title="Documents")
+        ctx = ContextResult(
+            category="Other",
+            sub_category="Other",
+            context_label="Other",
+            # activity_summary defaults to ""
+        )
+        tracker, provider, classifier, analyzer, pomodoro, store = _make_tracker(
+            window_info=win,
+            category="Other",
+            context_result=ctx,
+            active_session=None,
+        )
+
+        tracker.poll_once(datetime(2025, 6, 1, 16, 0))
+
+        record: ActivityRecord = store.save_activity.call_args[0][0]
+        assert record.activity_summary == ""
+
+
 
 # ---------------------------------------------------------------------------
 # run / stop tests

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Build FlowTrack as a cross-platform Python desktop app with system tray UI, automatic activity tracking, Pomodoro management, and weekly report export. Implementation proceeds bottom-up: data models and persistence first, then core logic, then reporting, then UI and packaging.
+Build FlowTrack as a cross-platform Python desktop app with system tray UI, automatic activity tracking, Pomodoro management, and weekly report export. The app features a two-tier user-defined task list (Focus tab) and an auto-tracked activity view organized under those tasks (Activity tab). Implementation proceeds bottom-up: data models and persistence first, then core logic, then reporting, then UI and packaging.
 
 ## Tasks
 
@@ -165,20 +165,20 @@ Build FlowTrack as a cross-platform Python desktop app with system tray UI, auto
     - Handle failures: log error, retain document locally
     - _Requirements: 10.3, 10.4, 10.5_
 
-- [x] 10. Implement UI layer
+- [x] 10. Implement UI layer (existing)
   - [x] 10.1 Implement Settings Window
     - Create `flowtrack/ui/settings.py` with `SettingsWindow` class using tkinter + ttk
     - Build Email tab (SMTP config + test connection button)
     - Build Categories tab (add/edit/remove Work_Categories and keyword rules)
     - Build Context Rules tab (add/edit/remove Sub_Category patterns)
-    - Build Pomodoro tab (durations, debounce, manual task creation)
+    - Build Pomodoro tab (durations, debounce)
     - Apply minimalistic ttk.Style theme (muted colors, flat design, system fonts)
     - Pre-populate fields from current config, save and apply on confirm
-    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
+    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
   - [x] 10.2 Implement System Tray Application
     - Create `flowtrack/ui/app.py` with `FlowTrackApp` class
-    - Use pystray for system tray icon with menu: Start/Stop, Daily Summary, Weekly Report, Add Task, Settings, Quit
+    - Use pystray for system tray icon with menu: Start/Stop, Daily Summary, Weekly Report, Settings, Quit
     - Start Tracker in background thread on launch
     - Wire summary display as toast notifications or simple popup windows
     - Wire settings to open SettingsWindow
@@ -208,11 +208,135 @@ Build FlowTrack as a cross-platform Python desktop app with system tray UI, auto
 - [x] 13. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
+---
+
+## NEW: Focus Tab & Activity Tab Feature Tasks
+
+- [x] 14. Add `active_task_id` and `activity_summary` to data models and persistence
+  - [x] 14.1 Update `ActivityRecord` model
+    - Add `active_task_id: Optional[int]` field to `ActivityRecord` in `flowtrack/core/models.py`
+    - Add `activity_summary: str` field to `ActivityRecord` (default empty string)
+    - _Requirements: 1.2, 5.2, 14.2_
+
+  - [x] 14.2 Update `PomodoroSession` model
+    - Add `active_task_id: Optional[int]` field to `PomodoroSession` in `flowtrack/core/models.py`
+    - _Requirements: 3.5_
+
+  - [x] 14.3 Update `ContextResult` model
+    - Add `activity_summary: str` field to `ContextResult` in `flowtrack/core/models.py`
+    - _Requirements: 14.2, 14.3_
+
+  - [x] 14.4 Update ActivityStore schema and queries
+    - Add `focus_tasks` table to `init_db()` with columns: id, title, category, parent_id, done, auto_generated, created_at, sort_order
+    - Add `active_task_id` and `activity_summary` columns to `activity_logs` table
+    - Add `active_task_id` column to `pomodoro_sessions` table
+    - Add index on `activity_logs.active_task_id`
+    - Update `save_activity()` and `get_activities()` to handle new fields
+    - Update `save_session()` and `get_sessions()` to handle `active_task_id`
+    - _Requirements: 5.2, 13.9, 14.1_
+
+  - [x] 14.5 Add focus task CRUD methods to ActivityStore
+    - Implement `get_todos(include_done)` — return all focus tasks with parent/child hierarchy
+    - Implement `add_todo(title, category, parent_id)` — create High_Level or Low_Level task
+    - Implement `toggle_todo(task_id)` — toggle done status
+    - Implement `delete_todo(task_id)` — delete task and children
+    - Implement `move_todo(task_id, new_parent_id)` — move Low_Level_Task between High_Level_Tasks
+    - Implement `merge_buckets(source_id, target_id)` — merge two High_Level_Tasks
+    - Implement `clear_all_todos()` and `clear_auto_todos()`
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.9_
+
+  - [x] 14.6 Add activity-by-task query methods to ActivityStore
+    - Implement `get_activities_by_task(task_id, start, end)` — activities for a specific Low_Level_Task
+    - Implement `get_activity_summary_by_task(task_id, start, end)` — aggregated entries grouped by app/context with time totals and summaries
+    - _Requirements: 14.1, 14.2, 14.5_
+
+- [x] 15. Update Context Analyzer to generate activity summaries
+  - [x] 15.1 Add `activity_summary` generation to `ContextAnalyzer.analyze()`
+    - Generate a human-readable summary of what the user is doing based on window title and app name
+    - Examples: "researched authentication issue, documented findings", "edited design spec v2", "reviewed pull request #42"
+    - Use smart title parsing patterns to produce concise summaries
+    - Fall back to "{app_name}: {cleaned_title}" when no smart pattern matches
+    - _Requirements: 14.2, 14.3_
+
+- [x] 16. Update Tracker to tag activities with Current_Active_Task
+  - [x] 16.1 Add `current_active_task_id` to Tracker
+    - Add `current_active_task_id: Optional[int]` attribute to `Tracker`
+    - In `poll_once()`, set `active_task_id` on each `ActivityRecord` from `current_active_task_id`
+    - In `poll_once()`, set `activity_summary` on each `ActivityRecord` from `ContextResult.activity_summary`
+    - _Requirements: 1.2, 14.7_
+
+  - [x] 16.2 Update Pomodoro session to carry active_task_id
+    - When creating/resuming a PomodoroSession, set `active_task_id` from `Tracker.current_active_task_id`
+    - _Requirements: 3.5_
+
+- [x] 17. Checkpoint - Ensure all existing tests still pass after model/store changes
+  - Run full test suite, fix any breakages from new fields
+  - Update existing test fixtures to include new fields where needed
+
+- [x] 18. Implement Focus Tab UI (web dashboard)
+  - [x] 18.1 Update web API for Focus tab
+    - `GET /api/todos` — return two-tier task list (High_Level_Tasks with nested Low_Level_Tasks)
+    - `POST /api/todos` — create a new task (with optional `parent_id` for Low_Level_Task)
+    - `POST /api/todos/<id>/toggle` — check off / uncheck a task
+    - `DELETE /api/todos/<id>` — delete a task
+    - `POST /api/todos/<id>/move` — move a Low_Level_Task to a different High_Level_Task
+    - `POST /api/todos/merge` — merge two High_Level_Tasks
+    - `POST /api/todos/clear-all` — delete all tasks
+    - `POST /api/todos/clear-auto` — delete auto-generated tasks
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.9_
+
+  - [x] 18.2 Add Current_Active_Task API
+    - `POST /api/active-task` — set the Current_Active_Task by Low_Level_Task ID; updates Tracker and Pomodoro
+    - `DELETE /api/active-task` — clear the Current_Active_Task
+    - `GET /api/active-task` — return the current active task info
+    - _Requirements: 13.5, 13.6, 13.7_
+
+  - [x] 18.3 Update Focus tab frontend (dashboard.html + app.js)
+    - Render two-tier task list: High_Level_Tasks as collapsible sections, Low_Level_Tasks as checkable items within
+    - Add inline "Add task" input per High_Level_Task and a "Add bucket" input at the top
+    - Implement drag-and-drop for Low_Level_Tasks between High_Level_Tasks
+    - Clicking a Low_Level_Task sets it as Current_Active_Task (highlight + "● tracking" badge)
+    - Show Pomodoro timer status tied to the Current_Active_Task
+    - Do NOT show any auto-tracked activity details on this tab
+    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8_
+
+- [x] 19. Implement Activity Tab UI (web dashboard)
+  - [x] 19.1 Add Activity tab API endpoints
+    - `GET /api/activity/by-task?date=YYYY-MM-DD` — return auto-tracked activities organized by High_Level_Task → Low_Level_Task → Activity_Entries, with time totals and summaries per entry
+    - Each Activity_Entry includes: app_name, activity_summary, time_spent, timestamp range
+    - Activities with no active_task_id grouped under "Unassigned"
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
+
+  - [x] 19.2 Update Activity tab frontend (dashboard.html + app.js)
+    - Render activity organized under user's task hierarchy: High_Level_Task sections → Low_Level_Task subsections → Activity_Entry list
+    - Each Activity_Entry shows: app icon/name, human-readable summary, time spent (e.g., "12m")
+    - Show total time per Low_Level_Task and per High_Level_Task
+    - Collapsible sections for drill-down
+    - "Unassigned" section at the bottom for activities with no active task
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
+
+- [x] 20. Update FlowTrackApp to wire Current_Active_Task
+  - [x] 20.1 Add active task management to FlowTrackApp
+    - Add `set_active_task(task_id)` method — sets `Tracker.current_active_task_id` and starts/switches Pomodoro session for that task
+    - Add `clear_active_task()` method — clears `Tracker.current_active_task_id`
+    - Wire the web API endpoints to these methods
+    - _Requirements: 13.5, 13.6, 14.7_
+
+- [x] 21. Checkpoint - Ensure all tests pass with new Focus/Activity features
+  - Run full test suite
+  - Verify Focus tab CRUD operations work end-to-end
+  - Verify Activity tab displays auto-tracked work under correct tasks
+  - Verify Current_Active_Task selection updates Pomodoro and activity association
+
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
+- Tasks 1-13 are the original implementation (all completed)
+- Tasks 14-21 implement the new Focus Tab and Activity Tab features
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties using Hypothesis
 - Unit tests validate specific examples and edge cases
-- Implementation proceeds bottom-up: models → persistence → core logic → reporting → UI → packaging
+- The Focus tab is purely user-defined tasks (no auto-tracking shown)
+- The Activity tab shows all auto-tracked work organized under the user's task hierarchy
+- The Current_Active_Task bridges the two: user selects a task on Focus, auto-tracked work on Activity is associated with it

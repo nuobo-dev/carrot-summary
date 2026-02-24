@@ -113,6 +113,8 @@ class ContextAnalyzer:
         2. Smart title parsing (built-in patterns)
         3. Clean title extraction (strip app name suffix)
         4. Fall back to category name
+
+        Also generates an activity_summary describing what the user is doing.
         """
         # 1. Try user-configured rules first
         for rule in self.rules:
@@ -121,31 +123,38 @@ class ContextAnalyzer:
             match = _match_title(rule.title_patterns, window_title)
             if match is not None:
                 label = _build_label(rule.sub_category, match)
+                summary = _generate_activity_summary(app_name, window_title, category, rule.sub_category)
                 return ContextResult(
                     category=category,
                     sub_category=rule.sub_category,
                     context_label=label,
+                    activity_summary=summary,
                 )
 
         # 2. Try smart title parsing
         result = _smart_parse(window_title, category)
         if result is not None:
+            result.activity_summary = _generate_activity_summary(app_name, window_title, category, result.sub_category)
             return result
 
         # 3. Try to extract a clean title by stripping app name
         clean = _clean_title(window_title)
         if clean and clean.lower() not in _GENERIC_LABELS and clean.lower() != category.lower() and len(clean) > 4:
+            summary = _generate_activity_summary(app_name, window_title, category, clean)
             return ContextResult(
                 category=category,
                 sub_category=clean,
                 context_label=clean,
+                activity_summary=summary,
             )
 
         # 4. Fall back to category
+        summary = _generate_activity_summary(app_name, window_title, category, category)
         return ContextResult(
             category=category,
             sub_category=category,
             context_label=category,
+            activity_summary=summary,
         )
 
 
@@ -218,3 +227,111 @@ def _clean_title(window_title: str) -> str:
         except re.error:
             continue
     return cleaned.strip(" -–—")
+
+# Smart summary patterns: (title_regex, summary_template)
+# Templates use {group_name} placeholders filled from regex named groups.
+_SUMMARY_PATTERNS: list[tuple[str, str]] = [
+    # Pull / merge request review
+    (r"(?i)(?:pull request|merge request|PR)\s*#?(?P<num>\d+)", "reviewed pull request #{num}"),
+    # Code review (CR-style, requires CR- prefix with digits)
+    (r"(?i)(?:code review|CR-)\s*(?P<id>\d+\S*)", "reviewed code review {id}"),
+    # Ticket / issue portals (only when no known tool suffix follows)
+    (r"(?i)(?P<ticket>[A-Z]+-\d+)\s*[-–—:]?\s*(?P<desc>.+?)(?:\s*[-–—]\s*(?:Google Chrome|Firefox|Safari|Microsoft Edge|Brave|Arc|Opera))$",
+     "researched {ticket}, {desc}"),
+    # IDE editing a file
+    (r"(?P<file>[^\s/\\]+\.\w{1,5})\s*[-–—]", "edited {file}"),
+    # Document editing with version
+    (r"(?i)(?P<doc>.+?)\s+v(?P<ver>\d+\S*)\s*[-–—]", "edited {doc} v{ver}"),
+    # Document editing (Google Docs / Word / Quip / Notion)
+    (r"(?i)(?P<doc>.+?)\s*[-–—]\s*(?:Google Docs|Microsoft Word|Word|Quip|Notion|Pages)",
+     "edited {doc}"),
+    # Spreadsheet editing
+    (r"(?i)(?P<doc>.+?)\s*[-–—]\s*(?:Google Sheets|Microsoft Excel|Numbers)",
+     "edited spreadsheet {doc}"),
+    # Presentation editing
+    (r"(?i)(?P<doc>.+?)\s*[-–—]\s*(?:Google Slides|Microsoft PowerPoint|Keynote)",
+     "edited presentation {doc}"),
+    # Zoom-specific: "Zoom Meeting" with no title → generic meeting
+    (r"(?i)^Zoom\s+Meeting$", "attended Zoom meeting"),
+    # Zoom-specific: "Zoom Meeting - Subject" or "Subject - Zoom Meeting"
+    (r"(?i)Zoom\s+Meeting\s*[-–—]\s*(?P<subject>.+)", "attended {subject}"),
+    (r"(?i)(?P<subject>.+?)\s*[-–—]\s*Zoom\s+Meeting", "attended {subject}"),
+    # Meeting in progress (general: "Subject - Zoom/Teams/Meet/Webex")
+    (r"(?i)(?P<subject>.+?)\s*[-–—]\s*(?:Zoom|Teams|Google Meet|Webex|Meet)",
+     "attended {subject}"),
+    # Slack / Teams channel
+    (r"(?i)(?P<channel>.+?)\s*[-–—]\s*(?:Slack|Discord|Microsoft Teams)",
+     "chatted in {channel}"),
+    # Email composing / reading
+    (r"(?i)(?:re:\s*|fw:\s*|fwd:\s*)*(?P<subject>.+?)\s*[-–—]\s*(?:Outlook|Mail|Gmail|Thunderbird)",
+     "emailed about {subject}"),
+    # Project management tools
+    (r"(?i)(?P<item>.+?)\s*[-–—]\s*(?:Jira|Asana|Trello|Linear|Monday|ClickUp|Taskei)",
+     "managed task {item}"),
+    # Design tools
+    (r"(?i)(?P<file>.+?)\s*[-–—]\s*(?:Figma|Sketch|Adobe \w+|Canva)",
+     "designed {file}"),
+    # Generic ticket ID (fallback — no known app suffix)
+    (r"(?i)(?P<ticket>[A-Z]+-\d+)\s*[-–—:]?\s*(?P<desc>.+?)$",
+     "researched {ticket}, {desc}"),
+    # Browser research (generic — last resort for browsers)
+    (r"(?i)(?P<page>.+?)\s*[-–—]\s*(?:Google Chrome|Firefox|Safari|Microsoft Edge|Brave|Arc|Opera)",
+     "researched {page}"),
+    # Terminal / shell
+    (r"(?i)(?P<ctx>.+?)\s*[-–—]\s*(?:Terminal|iTerm2?|Warp|Alacritty|Hyper|zsh|bash)",
+     "ran commands in {ctx}"),
+]
+
+
+def _generate_activity_summary(
+    app_name: str, window_title: str, category: str, sub_category: str
+) -> str:
+    """Generate a concise, human-readable summary of the user's activity.
+
+    Uses smart title parsing patterns to produce action-oriented summaries like:
+    - "edited design spec v2"
+    - "reviewed pull request #42"
+    - "researched authentication issue, documented findings"
+
+    Falls back to "{app_name}: {cleaned_title}" when no smart pattern matches.
+    """
+    if not app_name and not window_title:
+        return category
+
+    # Try smart patterns against the raw window title
+    for pattern, template in _SUMMARY_PATTERNS:
+        try:
+            m = re.search(pattern, window_title)
+            if m is None:
+                continue
+            groups = m.groupdict()
+            summary = template
+            for key, val in groups.items():
+                if val:
+                    val = val.strip().rstrip(" -–—")
+                    summary = summary.replace(f"{{{key}}}", val)
+            # Remove unfilled placeholders
+            summary = re.sub(r"\{[^}]+\}", "", summary).strip(", ")
+            if summary and len(summary) >= 3:
+                if len(summary) > 100:
+                    summary = summary[:97] + "..."
+                return summary
+        except re.error:
+            continue
+
+    # Fallback: "{app_name}: {cleaned_title}"
+    clean = _clean_title(window_title)
+    app_short = app_name.split(".")[0] if app_name else ""
+
+    if clean and clean.lower() not in _GENERIC_LABELS and app_short:
+        fallback = f"{app_short}: {clean}"
+    elif clean and clean.lower() not in _GENERIC_LABELS:
+        fallback = clean
+    elif app_short:
+        fallback = app_short
+    else:
+        fallback = category
+
+    if len(fallback) > 100:
+        fallback = fallback[:97] + "..."
+    return fallback

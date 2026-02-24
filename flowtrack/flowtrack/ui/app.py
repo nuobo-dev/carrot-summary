@@ -159,6 +159,30 @@ class CarrotSummaryApp:
             self._show_manual_task_dialog()
         except Exception:
             logger.exception("Failed to create manual task")
+    def set_active_task(self, task_id: int) -> None:
+        """Set the Current_Active_Task. Updates tracker and pomodoro manager.
+
+        Sets ``Tracker.current_active_task_id`` so subsequent polls tag
+        activities with this task, and updates the active Pomodoro session
+        (or starts/switches one) to track against the new task.
+        """
+        if self.tracker is not None:
+            self.tracker.current_active_task_id = task_id
+        if self._pomodoro_manager is not None:
+            self._pomodoro_manager.active_task_id = task_id
+            if self._pomodoro_manager.active_session is not None:
+                self._pomodoro_manager.active_session.active_task_id = task_id
+
+    def clear_active_task(self) -> None:
+        """Clear the Current_Active_Task. Activities go to 'Unassigned'."""
+        if self.tracker is not None:
+            self.tracker.current_active_task_id = None
+        if self._pomodoro_manager is not None:
+            self._pomodoro_manager.active_task_id = None
+            if self._pomodoro_manager.active_session is not None:
+                self._pomodoro_manager.active_session.active_task_id = None
+
+
 
     # ------------------------------------------------------------------
     # Component initialization

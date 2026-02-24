@@ -40,6 +40,8 @@ hiddenimports = [
 
 datas = [
     (str(ASSETS_DIR), "assets"),
+    (str(ROOT / "flowtrack" / "ui" / "templates"), "flowtrack/ui/templates"),
+    (str(ROOT / "flowtrack" / "ui" / "static"), "flowtrack/ui/static"),
 ]
 
 a = Analysis(
@@ -93,7 +95,7 @@ if IS_MACOS:
         bundle_identifier="com.carrotsummary.app",
         info_plist={
             "CFBundleDisplayName": "CarrotSummary",
-            "CFBundleShortVersionString": "1.0.0",
+            "CFBundleShortVersionString": "2.0.0",
             "LSBackgroundOnly": False,
             "LSUIElement": True,
             "NSHighResolutionCapable": True,

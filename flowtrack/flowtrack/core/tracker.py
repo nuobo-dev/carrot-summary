@@ -54,6 +54,7 @@ class Tracker:
         self.poll_interval = poll_interval
         self._running = False
         self._seen_contexts: set[str] = set()
+        self.current_active_task_id: Optional[int] = None  # set by UI when user clicks a task
 
     def poll_once(self, now: datetime) -> None:
         """Execute a single poll cycle."""
@@ -79,7 +80,8 @@ class Tracker:
             window_info.app_name, window_info.window_title, category
         )
 
-        # 4. Update pomodoro
+        # 4. Update pomodoro (propagate active task to session)
+        self.pomodoro_manager.active_task_id = self.current_active_task_id
         self.pomodoro_manager.on_activity(
             context.category, context.sub_category, now
         )
@@ -100,6 +102,8 @@ class Tracker:
             category=context.category,
             sub_category=context.sub_category,
             session_id=session_id,
+            active_task_id=self.current_active_task_id,
+            activity_summary=context.activity_summary,
         )
         self.store.save_activity(record)
 

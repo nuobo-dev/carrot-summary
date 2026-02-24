@@ -52,6 +52,7 @@ class ContextResult:
     category: str        # Work_Category from Classifier
     sub_category: str    # refined sub-category (e.g., "Contract Draft")
     context_label: str   # human-readable label (e.g., "Contract Draft: Smith v. Jones")
+    activity_summary: str = ""  # human-readable summary of what user is doing
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ class PomodoroSession:
     elapsed: timedelta
     status: SessionStatus
     completed_count: int  # number of completed work intervals in this session
+    active_task_id: Optional[int] = None  # FK to focus_tasks Low_Level_Task
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +94,8 @@ class ActivityRecord:
     category: str
     sub_category: str
     session_id: Optional[str]
+    active_task_id: Optional[int] = None  # FK to focus_tasks Low_Level_Task
+    activity_summary: str = ""  # human-readable summary from Context_Analyzer
 
 
 # ---------------------------------------------------------------------------

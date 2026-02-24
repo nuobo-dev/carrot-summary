@@ -46,6 +46,7 @@
           </div>
         </div>
         <div class="timer-info">
+          <div id="active-task-display" class="session-category" style="font-weight:600;color:var(--accent)">No active task</div>
           <div id="session-cat" class="session-category">—</div>
           <div id="session-count" class="session-count">0 sessions completed</div>
           <div id="session-dots" class="dots"></div>
@@ -87,6 +88,13 @@
         <div class="meta">
           <strong id="activity-total">0m</strong> · <span id="activity-sessions">0</span> sessions
         </div>
+      </div>
+      <div id="activity-by-task"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Category Breakdown</h2>
       </div>
       <div id="activity-breakdown"></div>
     </div>

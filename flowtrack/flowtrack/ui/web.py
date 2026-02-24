@@ -66,10 +66,23 @@ def create_flask_app() -> Flask:
             for cat, s in pm.paused_sessions.items():
                 paused.append({"category": cat, "elapsed": int(s.elapsed.total_seconds()),
                                "completed_count": s.completed_count})
+        # Active task info
+        active_task_id = None
+        active_task_display = None
+        if _app_ref.tracker:
+            active_task_id = _app_ref.tracker.current_active_task_id
+        if active_task_id and _app_ref._store:
+            todos = _app_ref._store.get_todos(include_done=True)
+            task = next((t for t in todos if t["id"] == active_task_id), None)
+            if task:
+                parent = next((t for t in todos if t["id"] == task.get("parent_id")), None)
+                active_task_display = f"{parent['title']}: {task['title']}" if parent else task["title"]
         return jsonify({
             "tracking": _app_ref._tracking,
             "session": session,
             "paused_sessions": paused,
+            "active_task_id": active_task_id,
+            "active_task_display": active_task_display,
         })
 
     @app.route("/api/summary/daily")
@@ -150,7 +163,21 @@ def create_flask_app() -> Flask:
     def api_todos():
         if not _app_ref or not _app_ref._store:
             return jsonify([])
-        return jsonify(_app_ref._store.get_todos(include_done=True))
+        todos = _app_ref._store.get_todos(include_done=True)
+        # Build two-tier hierarchy: High_Level_Tasks with nested Low_Level_Tasks
+        parents = []
+        child_map: dict[int, list[dict]] = {}
+        for t in todos:
+            pid = t.get("parent_id")
+            if pid:
+                child_map.setdefault(pid, []).append(t)
+            else:
+                parents.append(t)
+        result = []
+        for p in parents:
+            p["children"] = child_map.get(p["id"], [])
+            result.append(p)
+        return jsonify(result)
 
     @app.route("/api/todos", methods=["POST"])
     def api_add_todo():
@@ -285,6 +312,130 @@ def create_flask_app() -> Flask:
                 pm._last_tick = datetime.now()
         return jsonify({"ok": True})
 
+    # ------------------------------------------------------------------
+    # Active Task API (Task 18.2)
+    # ------------------------------------------------------------------
+
+    @app.route("/api/active-task", methods=["GET"])
+    def api_get_active_task():
+        if not _app_ref:
+            return jsonify({"active_task_id": None})
+        tid = None
+        if _app_ref.tracker:
+            tid = _app_ref.tracker.current_active_task_id
+        # Look up task info
+        task_info = None
+        if tid and _app_ref._store:
+            todos = _app_ref._store.get_todos(include_done=True)
+            task = next((t for t in todos if t["id"] == tid), None)
+            if task:
+                parent = next((t for t in todos if t["id"] == task.get("parent_id")), None)
+                task_info = {
+                    "id": tid,
+                    "title": task["title"],
+                    "parent_title": parent["title"] if parent else None,
+                    "display": f"{parent['title']}: {task['title']}" if parent else task["title"],
+                }
+        return jsonify({"active_task_id": tid, "task": task_info})
+
+    @app.route("/api/active-task", methods=["POST"])
+    def api_set_active_task():
+        if not _app_ref:
+            return jsonify({"error": "not ready"}), 500
+        data = request.json or {}
+        task_id = data.get("task_id")
+        if task_id is not None:
+            task_id = int(task_id)
+        _app_ref.set_active_task(task_id)
+        return jsonify({"ok": True, "active_task_id": task_id})
+
+    @app.route("/api/active-task", methods=["DELETE"])
+    def api_clear_active_task():
+        if not _app_ref:
+            return jsonify({"error": "not ready"}), 500
+        _app_ref.clear_active_task()
+        return jsonify({"ok": True})
+
+    # ------------------------------------------------------------------
+    # Activity-by-task API (Task 19.1)
+    # ------------------------------------------------------------------
+
+    @app.route("/api/activity/by-task")
+    def api_activity_by_task():
+        """Return auto-tracked activities organized by task hierarchy for a given date."""
+        if not _app_ref or not _app_ref._store:
+            return jsonify({"error": "not ready"})
+        from flowtrack.reporting.formatter import TextFormatter
+        date_str = request.args.get("date")
+        target = date.fromisoformat(date_str) if date_str else date.today()
+        start_dt = datetime(target.year, target.month, target.day)
+        end_dt = start_dt + timedelta(days=1)
+        poll = _app_ref.config.get("poll_interval_seconds", 5)
+
+        # Get all todos and all activities for the day
+        todos = _app_ref._store.get_todos(include_done=True)
+        all_activities = _app_ref._store.get_activities(start_dt, end_dt)
+
+        # Build parent (high-level) and child (low-level) maps
+        parents = [t for t in todos if not t.get("parent_id")]
+        child_map = {}
+        for t in todos:
+            pid = t.get("parent_id")
+            if pid:
+                child_map.setdefault(pid, []).append(t)
+
+        # Group activities by active_task_id
+        task_activities = {}
+        unassigned = []
+        for act in all_activities:
+            tid = act.active_task_id
+            if tid:
+                task_activities.setdefault(tid, []).append(act)
+            else:
+                unassigned.append(act)
+
+        # Build response: high-level tasks with nested low-level tasks and their activities
+        result = []
+        for parent in parents:
+            children = child_map.get(parent["id"], [])
+            child_results = []
+            parent_total_sec = 0
+            for child in children:
+                acts = task_activities.get(child["id"], [])
+                child_total_sec = len(acts) * poll
+                parent_total_sec += child_total_sec
+                # Aggregate activities by app+summary
+                agg = _aggregate_activities(acts, poll)
+                child_results.append({
+                    "id": child["id"],
+                    "title": child["title"],
+                    "done": bool(child.get("done")),
+                    "total_time": TextFormatter.format_duration(timedelta(seconds=child_total_sec)),
+                    "total_seconds": child_total_sec,
+                    "entries": agg,
+                })
+            result.append({
+                "id": parent["id"],
+                "title": parent["title"],
+                "total_time": TextFormatter.format_duration(timedelta(seconds=parent_total_sec)),
+                "total_seconds": parent_total_sec,
+                "children": child_results,
+            })
+
+        # Unassigned activities
+        unassigned_total = len(unassigned) * poll
+        unassigned_agg = _aggregate_activities(unassigned, poll)
+
+        return jsonify({
+            "date": str(target),
+            "tasks": result,
+            "unassigned": {
+                "total_time": TextFormatter.format_duration(timedelta(seconds=unassigned_total)),
+                "total_seconds": unassigned_total,
+                "entries": unassigned_agg,
+            },
+        })
+
     return app
 
 
@@ -302,6 +453,50 @@ def start_dashboard(app_ref, port: int = 5555) -> threading.Thread:
     logger.info("Dashboard started at http://127.0.0.1:%d", port)
     return t
 
+
+
+def _aggregate_activities(activities, poll_interval):
+    """Aggregate a list of ActivityRecord objects by app_name + activity_summary.
+
+    Uses normalized keys so that entries differing only in case or
+    trailing whitespace are combined into a single row.
+    """
+    import re as _re
+    from flowtrack.reporting.formatter import TextFormatter
+
+    def _normalize(text: str) -> str:
+        """Lowercase, collapse whitespace, strip trailing punctuation."""
+        t = text.lower().strip()
+        t = _re.sub(r"\s+", " ", t)
+        t = t.rstrip(" .,;:-–—")
+        return t
+
+    agg = {}
+    for act in activities:
+        raw_summary = act.activity_summary or act.sub_category
+        norm_key = (_normalize(act.app_name), _normalize(raw_summary))
+        if norm_key not in agg:
+            agg[norm_key] = {"app_name": act.app_name, "summary": raw_summary,
+                             "category": act.category, "count": 0,
+                             "first_ts": act.timestamp, "last_ts": act.timestamp}
+        agg[norm_key]["count"] += 1
+        if act.timestamp < agg[norm_key]["first_ts"]:
+            agg[norm_key]["first_ts"] = act.timestamp
+        if act.timestamp > agg[norm_key]["last_ts"]:
+            agg[norm_key]["last_ts"] = act.timestamp
+    result = []
+    for _key, data in sorted(agg.items(), key=lambda x: x[1]["count"], reverse=True):
+        sec = data["count"] * poll_interval
+        result.append({
+            "app_name": data["app_name"],
+            "summary": data["summary"],
+            "category": data["category"],
+            "time_str": TextFormatter.format_duration(timedelta(seconds=sec)),
+            "time_seconds": sec,
+            "timestamp_start": data["first_ts"].isoformat() if isinstance(data["first_ts"], datetime) else str(data["first_ts"]),
+            "timestamp_end": data["last_ts"].isoformat() if isinstance(data["last_ts"], datetime) else str(data["last_ts"]),
+        })
+    return result
 
 
 def _build_category_response(categories, TextFormatter):

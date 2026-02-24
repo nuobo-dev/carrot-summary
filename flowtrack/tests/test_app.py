@@ -378,3 +378,98 @@ class TestAddManualTask:
         with caplog.at_level(logging.WARNING):
             app.add_manual_task()
         assert "not initialized" in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# Active task management tests
+# ---------------------------------------------------------------------------
+
+class TestActiveTaskManagement:
+    """Tests for set_active_task and clear_active_task."""
+
+    @patch("flowtrack.ui.app.create_window_provider")
+    def test_set_active_task_updates_tracker(self, mock_factory, app):
+        """set_active_task sets tracker.current_active_task_id."""
+        mock_factory.return_value = MagicMock()
+        app._init_components()
+        app.set_active_task(42)
+        assert app.tracker.current_active_task_id == 42
+        if app._store:
+            app._store.close()
+
+    @patch("flowtrack.ui.app.create_window_provider")
+    def test_set_active_task_updates_pomodoro_manager(self, mock_factory, app):
+        """set_active_task sets pomodoro_manager.active_task_id."""
+        mock_factory.return_value = MagicMock()
+        app._init_components()
+        app.set_active_task(7)
+        assert app._pomodoro_manager.active_task_id == 7
+        if app._store:
+            app._store.close()
+
+    @patch("flowtrack.ui.app.create_window_provider")
+    def test_set_active_task_updates_active_session(self, mock_factory, app):
+        """set_active_task updates the active pomodoro session's active_task_id."""
+        mock_factory.return_value = MagicMock()
+        app._init_components()
+        # Start a session so there's an active one
+        from datetime import datetime
+        app._pomodoro_manager.on_activity("Dev", "coding", datetime.now())
+        assert app._pomodoro_manager.active_session is not None
+        app.set_active_task(99)
+        assert app._pomodoro_manager.active_session.active_task_id == 99
+        if app._store:
+            app._store.close()
+
+    @patch("flowtrack.ui.app.create_window_provider")
+    def test_clear_active_task_clears_tracker(self, mock_factory, app):
+        """clear_active_task sets tracker.current_active_task_id to None."""
+        mock_factory.return_value = MagicMock()
+        app._init_components()
+        app.set_active_task(42)
+        app.clear_active_task()
+        assert app.tracker.current_active_task_id is None
+        if app._store:
+            app._store.close()
+
+    @patch("flowtrack.ui.app.create_window_provider")
+    def test_clear_active_task_clears_pomodoro(self, mock_factory, app):
+        """clear_active_task clears pomodoro_manager.active_task_id and session."""
+        mock_factory.return_value = MagicMock()
+        app._init_components()
+        from datetime import datetime
+        app._pomodoro_manager.on_activity("Dev", "coding", datetime.now())
+        app.set_active_task(42)
+        app.clear_active_task()
+        assert app._pomodoro_manager.active_task_id is None
+        assert app._pomodoro_manager.active_session.active_task_id is None
+        if app._store:
+            app._store.close()
+
+    def test_set_active_task_no_tracker(self, app):
+        """set_active_task works when tracker is None (no window provider)."""
+        app._init_components()
+        app.tracker = None
+        app.set_active_task(5)
+        assert app._pomodoro_manager.active_task_id == 5
+        if app._store:
+            app._store.close()
+
+    def test_clear_active_task_no_tracker(self, app):
+        """clear_active_task works when tracker is None."""
+        app._init_components()
+        app.tracker = None
+        app.clear_active_task()
+        assert app._pomodoro_manager.active_task_id is None
+        if app._store:
+            app._store.close()
+
+    def test_set_active_task_no_active_session(self, app):
+        """set_active_task works when there's no active pomodoro session."""
+        app._init_components()
+        app.tracker = None
+        assert app._pomodoro_manager.active_session is None
+        app.set_active_task(10)
+        assert app._pomodoro_manager.active_task_id == 10
+        if app._store:
+            app._store.close()

@@ -160,14 +160,34 @@ Click the carrot icon to see options:
 
 ### Dashboard (http://localhost:5555)
 
-The dashboard has four tabs:
+The dashboard has three tabs:
 
 | Tab | What it shows |
 |-----|--------------|
-| **Timer** | Live Pomodoro countdown, current task, session count, start new tasks |
-| **Tasks** | Your to-do list (auto-generated + manual), check off completed items |
-| **Activity** | Today's time breakdown by category with visual bars |
+| **Focus** | Pomodoro timer, your two-tier task list (buckets → tasks), set active task for tracking |
+| **Activity** | Auto-tracked work organized under your task hierarchy, time per task, calendar view, category breakdown, report generation |
 | **Settings** | Edit Pomodoro durations, tracking speed, email settings |
+
+### Focus Tab
+
+The Focus tab is your task management hub:
+- Create **buckets** (high-level tasks like "Tickets", "Design Work")
+- Add **tasks** under each bucket (like "authentication issue", "mockups")
+- Click a task to set it as the **active task** — the Pomodoro timer runs against it and all auto-tracked activity is associated with it
+- Drag and drop tasks between buckets to reorganize
+- Check off completed tasks
+- Auto-generated tasks appear from your detected work contexts
+
+### Activity Tab
+
+The Activity tab shows your auto-tracked work organized under your task hierarchy:
+- Each bucket shows its total tracked time
+- Under each bucket, tasks show their individual time
+- Under each task, you see detailed entries: which app you used, what you did, and how long
+- Activities with no active task go under "Unassigned"
+- Calendar view lets you browse any day's activity
+- Category breakdown shows time by work type with visual bars
+- Generate date-range reports
 
 ### How Categories Work
 
@@ -228,6 +248,24 @@ python -m pytest
 # CLI summaries (no GUI needed)
 python -m flowtrack.main --daily
 python -m flowtrack.main --weekly
+
+# Rebuild the standalone .app + .dmg
+./scripts/rebuild.sh
+# Output: dist/CarrotSummary.app (43M) and dist/CarrotSummary.dmg (23M)
+```
+
+## Standalone App (No Python Required)
+
+Pre-built standalone apps are available in the `dist/` folder:
+
+- **macOS**: `dist/CarrotSummary.dmg` — mount the disk image and drag to Applications
+- **Windows**: `dist/FlowTrack-Windows/` — run `CarrotSummary.exe` directly
+
+To rebuild from source:
+```bash
+cd flowtrack
+./scripts/rebuild.sh    # macOS
+scripts\build_windows.bat  # Windows
 ```
 
 ## License
