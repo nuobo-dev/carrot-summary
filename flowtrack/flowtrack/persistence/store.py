@@ -239,6 +239,23 @@ class ActivityStore:
         conn.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
         conn.commit()
 
+    def clear_all_todos(self) -> None:
+        conn = self._get_conn()
+        conn.execute("DELETE FROM todos")
+        conn.commit()
+
+    def clear_auto_todos(self) -> None:
+        conn = self._get_conn()
+        conn.execute("DELETE FROM todos WHERE auto_generated = 1")
+        conn.commit()
+
+    def merge_buckets(self, source_id: int, target_id: int) -> None:
+        """Move all children of source_id to target_id, then delete source."""
+        conn = self._get_conn()
+        conn.execute("UPDATE todos SET parent_id = ? WHERE parent_id = ?", (target_id, source_id))
+        conn.execute("DELETE FROM todos WHERE id = ?", (source_id,))
+        conn.commit()
+
     # ------------------------------------------------------------------
     # Row mapping helpers
     # ------------------------------------------------------------------

@@ -139,6 +139,30 @@ def create_flask_app() -> Flask:
         _app_ref._store.move_todo(tid, parent_id)
         return jsonify({"ok": True})
 
+    @app.route("/api/todos/clear-all", methods=["POST"])
+    def api_clear_all_todos():
+        if _app_ref and _app_ref._store:
+            _app_ref._store.clear_all_todos()
+        return jsonify({"ok": True})
+
+    @app.route("/api/todos/clear-auto", methods=["POST"])
+    def api_clear_auto_todos():
+        if _app_ref and _app_ref._store:
+            _app_ref._store.clear_auto_todos()
+        return jsonify({"ok": True})
+
+    @app.route("/api/todos/merge", methods=["POST"])
+    def api_merge_buckets():
+        if not _app_ref or not _app_ref._store:
+            return jsonify({"error": "not ready"}), 500
+        data = request.json or {}
+        source_id = data.get("source_id")
+        target_id = data.get("target_id")
+        if not source_id or not target_id:
+            return jsonify({"error": "source_id and target_id required"}), 400
+        _app_ref._store.merge_buckets(source_id, target_id)
+        return jsonify({"ok": True})
+
     @app.route("/api/config")
     def api_get_config():
         if not _app_ref:
@@ -267,9 +291,15 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     </div>
 
     <div class="card">
-      <h2>Task List</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin-bottom:0">Task List</h2>
+        <div style="display:flex;gap:6px">
+          <button onclick="clearAutoTodos()" style="padding:4px 10px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:0.75em">Clear Auto</button>
+          <button onclick="clearAllTodos()" style="padding:4px 10px;background:var(--bg);color:#e55;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:0.75em">Clear All</button>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input id="todo-title" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTodo()"
+        <input id="todo-title" placeholder="Add a work bucket..." onkeydown="if(event.key==='Enter')addTodo()"
                style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.9em">
         <button onclick="addTodo()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.9em">Add</button>
       </div>
@@ -462,11 +492,13 @@ async function refreshTodos() {
   parents.forEach(p => {
     const children = childMap[p.id] || [];
     const isTracking = !p.done && trackingCat && p.title.toLowerCase() === trackingCat.toLowerCase();
-    html += `<div class="bucket" data-id="${p.id}">
-      <div class="todo-item bucket-header ${p.done ? 'done' : ''} ${isTracking ? 'active' : ''}"
-           ondragover="event.preventDefault();this.parentElement.classList.add('drag-over')"
-           ondragleave="this.parentElement.classList.remove('drag-over')"
-           ondrop="dropTodo(event,${p.id})">
+    html += `<div class="bucket" data-id="${p.id}" draggable="true"
+                  ondragstart="dragBucket(event,${p.id})"
+                  ondragover="event.preventDefault();this.classList.add('drag-over')"
+                  ondragleave="this.classList.remove('drag-over')"
+                  ondrop="dropOnBucket(event,${p.id})">
+      <div class="todo-item bucket-header ${p.done ? 'done' : ''} ${isTracking ? 'active' : ''}">
+        <span style="color:var(--muted);cursor:grab;margin-right:2px">⠿</span>
         <input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleTodo(${p.id})">
         <span class="t-title" style="font-weight:600">${esc(p.title)}</span>
         ${isTracking ? '<span class="t-badge tracking">● tracking</span>' : ''}
@@ -514,16 +546,41 @@ async function refreshTodos() {
   el.innerHTML = html;
 }
 
-let draggedTodoId = null;
-function dragTodo(e, id) { draggedTodoId = id; e.dataTransfer.effectAllowed = 'move'; }
-async function dropTodo(e, parentId) {
+let draggedTodoId = null, draggedBucketId = null;
+function dragTodo(e, id) { draggedTodoId = id; draggedBucketId = null; e.dataTransfer.effectAllowed = 'move'; }
+function dragBucket(e, id) { draggedBucketId = id; draggedTodoId = null; e.dataTransfer.effectAllowed = 'move'; }
+
+async function dropOnBucket(e, targetId) {
   e.preventDefault();
-  e.currentTarget.parentElement.classList.remove('drag-over');
-  if (draggedTodoId && draggedTodoId !== parentId) {
-    await fetchJSON(`/api/todos/${draggedTodoId}/move`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({parent_id:parentId})});
+  e.currentTarget.classList.remove('drag-over');
+  if (draggedTodoId && draggedTodoId !== targetId) {
+    // Move a child task into this bucket
+    await fetchJSON(`/api/todos/${draggedTodoId}/move`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({parent_id:targetId})});
     refreshTodos();
+  } else if (draggedBucketId && draggedBucketId !== targetId) {
+    // Merge source bucket into target bucket
+    if (confirm('Merge these two buckets? All tasks from the dragged bucket will move into this one.')) {
+      await fetchJSON('/api/todos/merge', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({source_id:draggedBucketId, target_id:targetId})});
+      refreshTodos();
+    }
   }
   draggedTodoId = null;
+  draggedBucketId = null;
+}
+
+// Keep old dropTodo for orphan area compatibility
+async function dropTodo(e, parentId) { return dropOnBucket(e, parentId); }
+
+async function clearAllTodos() {
+  if (!confirm('Delete ALL tasks? This cannot be undone.')) return;
+  await fetchJSON('/api/todos/clear-all', {method:'POST'});
+  refreshTodos();
+}
+
+async function clearAutoTodos() {
+  if (!confirm('Delete all auto-tracked tasks? Manual buckets will be kept.')) return;
+  await fetchJSON('/api/todos/clear-auto', {method:'POST'});
+  refreshTodos();
 }
 
 async function refreshActivity() {
