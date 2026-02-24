@@ -270,7 +270,7 @@ def _build_category_response(categories, TextFormatter):
             display_name = f"General {c.category.lower()}" if (sub_name == c.category or not sub_name) else sub_name
             minutes = sub_time.total_seconds() / 60
             entry = {"name": display_name, "time_str": TextFormatter.format_duration(sub_time)}
-            if minutes >= 5:
+            if minutes >= 1:
                 main_subs.append(entry)
             else:
                 other_subs.append(entry)
@@ -278,7 +278,7 @@ def _build_category_response(categories, TextFormatter):
         if other_subs:
             from datetime import timedelta as td
             other_total = sum((s.total_seconds() for n, s in c.sub_categories.items()
-                              if s.total_seconds() < 300 and n != c.category), 0)
+                              if s.total_seconds() < 60 and n != c.category), 0)
             main_subs.append({
                 "name": f"Other ({len(other_subs)} items)",
                 "time_str": TextFormatter.format_duration(td(seconds=other_total)),
@@ -723,18 +723,25 @@ async function loadActivity(dateStr) {
       html += `<div class="activity-subs" id="subs-${i}">`;
       c.sub_tasks.forEach((s, si) => {
         const sp = (parseDur(s.time_str) / maxSub * 100).toFixed(0);
-        html += `<div class="activity-sub"><span class="activity-sub-name">${esc(s.name)}</span>
-          <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%"></span></span>
-          <span class="activity-sub-time">${s.time_str}</span>`;
-        if (s.collapsed && s.collapsed.length > 0) {
-          html += `<span class="collapsed-toggle" onclick="document.getElementById('col-${i}-${si}').style.display=document.getElementById('col-${i}-${si}').style.display==='none'?'':'none'">▾</span>`;
-          html += `<div id="col-${i}-${si}" style="display:none;padding-left:16px;margin-top:4px">`;
+        const hasCollapsed = s.collapsed && s.collapsed.length > 0;
+        if (hasCollapsed) {
+          // Render "Other" as a clickable expandable row
+          html += `<div class="activity-sub other-row" style="cursor:pointer" onclick="toggleCollapsed('col-${i}-${si}',this)">
+            <span class="activity-sub-name" style="color:var(--accent)">▶ ${esc(s.name)}</span>
+            <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%;opacity:0.4"></span></span>
+            <span class="activity-sub-time">${s.time_str}</span>
+          </div>
+          <div id="col-${i}-${si}" class="collapsed-detail" style="display:none;padding-left:24px;padding-bottom:6px;border-left:2px solid var(--border);margin-left:4px">`;
           s.collapsed.forEach(cc => {
-            html += `<div style="font-size:0.8em;color:var(--muted);padding:1px 0">${esc(cc.name)} — ${cc.time_str}</div>`;
+            html += `<div style="display:flex;justify-content:space-between;font-size:0.8em;color:var(--muted);padding:3px 0;border-bottom:1px solid #f0f0f0">
+              <span>${esc(cc.name)}</span><span style="min-width:50px;text-align:right">${cc.time_str}</span></div>`;
           });
           html += '</div>';
+        } else {
+          html += `<div class="activity-sub"><span class="activity-sub-name">${esc(s.name)}</span>
+            <span class="activity-sub-bar"><span class="activity-sub-bar-fill" style="width:${sp}%"></span></span>
+            <span class="activity-sub-time">${s.time_str}</span></div>`;
         }
-        html += '</div>';
       });
       html += '</div>';
     }
@@ -752,6 +759,17 @@ function toggleSubs(i) {
   if (!el) return;
   el.style.display = el.style.display === 'none' ? '' : 'none';
   if (chev) chev.classList.toggle('open');
+}
+
+function toggleCollapsed(id, row) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const showing = el.style.display === 'none';
+  el.style.display = showing ? '' : 'none';
+  const nameSpan = row.querySelector('.activity-sub-name');
+  if (nameSpan) {
+    nameSpan.innerHTML = nameSpan.innerHTML.replace(/^[▶▼]/, showing ? '▼' : '▶');
+  }
 }
 
 // Calendar
