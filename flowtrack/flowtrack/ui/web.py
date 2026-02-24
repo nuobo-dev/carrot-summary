@@ -161,7 +161,8 @@ def create_flask_app() -> Flask:
         if not title:
             return jsonify({"error": "title required"}), 400
         cat = data.get("category", "")
-        tid = _app_ref._store.add_todo(title, cat)
+        parent_id = data.get("parent_id")
+        tid = _app_ref._store.add_todo(title, cat, parent_id=parent_id)
         return jsonify({"id": tid})
 
     @app.route("/api/todos/<int:tid>/toggle", methods=["POST"])
