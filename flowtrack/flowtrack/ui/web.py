@@ -163,8 +163,9 @@ def create_flask_app() -> Flask:
     def api_todos():
         if not _app_ref or not _app_ref._store:
             return jsonify([])
+        show = request.args.get("show", "manual")  # "manual" (Focus tab) or "all" (Activity tab)
         todos = _app_ref._store.get_todos(include_done=True)
-        # Build two-tier hierarchy: High_Level_Tasks with nested Low_Level_Tasks
+        # Build two-tier hierarchy
         parents = []
         child_map: dict[int, list[dict]] = {}
         for t in todos:
@@ -173,6 +174,11 @@ def create_flask_app() -> Flask:
                 child_map.setdefault(pid, []).append(t)
             else:
                 parents.append(t)
+
+        if show == "manual":
+            # Focus tab: only user-defined (non-auto) top-level buckets
+            parents = [p for p in parents if not p.get("auto_generated")]
+
         result = []
         for p in parents:
             p["children"] = child_map.get(p["id"], [])
@@ -311,6 +317,94 @@ def create_flask_app() -> Flask:
                 pm.active_session.elapsed = timedelta(0)
                 pm._last_tick = datetime.now()
         return jsonify({"ok": True})
+
+    # ------------------------------------------------------------------
+    # ML Screen Analysis Toggle
+    # ------------------------------------------------------------------
+
+    @app.route("/api/ml-analysis", methods=["GET"])
+    def api_get_ml_status():
+        if not _app_ref or not _app_ref.tracker:
+            return jsonify({"enabled": False, "available": False})
+        return jsonify({
+            "enabled": _app_ref.tracker.ml_enabled,
+            "available": True,
+        })
+
+    @app.route("/api/ml-analysis", methods=["POST"])
+    def api_toggle_ml():
+        if not _app_ref or not _app_ref.tracker:
+            return jsonify({"error": "not ready"}), 500
+        data = request.json or {}
+        enabled = bool(data.get("enabled", False))
+        _app_ref.tracker.ml_enabled = enabled
+        # Persist to config
+        _app_ref.config["ml_screen_analysis"] = enabled
+        from flowtrack.core.config import save_config
+        save_config(_app_ref.config, _app_ref.config_path)
+        return jsonify({"ok": True, "enabled": _app_ref.tracker.ml_enabled})
+
+    # ------------------------------------------------------------------
+    # AI News Feed
+    # ------------------------------------------------------------------
+
+    @app.route("/api/news")
+    def api_news():
+        """Fetch AI news from web search. Returns cached results for 1 hour."""
+        news_type = request.args.get("type", "business")  # "business" or "technical"
+        try:
+            from flowtrack.core.news_fetcher import fetch_ai_news
+            items = fetch_ai_news(news_type=news_type)
+            return jsonify({"items": items, "type": news_type})
+        except Exception as e:
+            logger.exception("Failed to fetch AI news")
+            return jsonify({"items": [], "error": str(e)})
+
+    # ------------------------------------------------------------------
+    # Debug Mode & Live Tracking Info
+    # ------------------------------------------------------------------
+
+    @app.route("/api/debug", methods=["GET"])
+    def api_debug_status():
+        if not _app_ref or not _app_ref.tracker:
+            return jsonify({"enabled": False, "log": []})
+        return jsonify({
+            "enabled": _app_ref.tracker.debug_mode,
+            "ml_enabled": _app_ref.tracker.ml_enabled,
+            "log": _app_ref.tracker._debug_log[-50:],  # last 50 entries
+        })
+
+    @app.route("/api/debug", methods=["POST"])
+    def api_toggle_debug():
+        if not _app_ref or not _app_ref.tracker:
+            return jsonify({"error": "not ready"}), 500
+        data = request.json or {}
+        enabled = bool(data.get("enabled", False))
+        _app_ref.tracker.debug_mode = enabled
+        if not enabled:
+            _app_ref.tracker._debug_log.clear()
+        return jsonify({"ok": True, "enabled": enabled})
+
+    @app.route("/api/live-tracking")
+    def api_live_tracking():
+        """Return what's currently being tracked — for Activity tab display."""
+        if not _app_ref or not _app_ref.tracker:
+            return jsonify({"tracking": None})
+        t = _app_ref.tracker
+        info = t._last_window_info
+        ctx = t._last_context
+        if not info:
+            return jsonify({"tracking": None})
+        result = {
+            "app_name": info.app_name,
+            "window_title": info.window_title,
+            "category": ctx.category if ctx else "",
+            "sub_category": ctx.sub_category if ctx else "",
+            "activity_summary": ctx.activity_summary if ctx else "",
+            "ml_enabled": t.ml_enabled,
+            "active_task_id": t.current_active_task_id,
+        }
+        return jsonify({"tracking": result})
 
     # ------------------------------------------------------------------
     # Active Task API (Task 18.2)

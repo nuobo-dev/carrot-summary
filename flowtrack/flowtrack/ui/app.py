@@ -239,6 +239,7 @@ class CarrotSummaryApp:
             window_provider = None
 
         # Tracker
+        ml_enabled = config.get("ml_screen_analysis", False)
         if window_provider is not None:
             self.tracker = Tracker(
                 window_provider=window_provider,
@@ -247,6 +248,7 @@ class CarrotSummaryApp:
                 pomodoro_manager=self._pomodoro_manager,
                 store=self._store,
                 poll_interval=poll_interval,
+                ml_screen_analysis=ml_enabled,
             )
 
     # ------------------------------------------------------------------

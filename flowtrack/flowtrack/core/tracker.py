@@ -1,18 +1,21 @@
 """Tracker orchestrator for CarrotSummary.
 
-Coordinates the polling loop: reads the active window, classifies the
-activity, analyzes context, updates the Pomodoro manager, and persists
-the observation to the activity store.
+Coordinates activity tracking via either:
+- Event-driven mode (macOS): NSWorkspace notifications + lightweight title polling
+- Polling mode (fallback/Windows): periodic full window queries
+
+Also supports optional ML-powered screen analysis for richer activity summaries.
 """
 
 import logging
+import sys
 import time
 from datetime import datetime
 from typing import Optional
 
 from flowtrack.core.classifier import Classifier
 from flowtrack.core.context_analyzer import ContextAnalyzer
-from flowtrack.core.models import ActivityRecord
+from flowtrack.core.models import ActivityRecord, WindowInfo
 from flowtrack.core.pomodoro import PomodoroManager
 from flowtrack.persistence.store import ActivityStore
 from flowtrack.platform.base import WindowProvider
@@ -23,18 +26,12 @@ logger = logging.getLogger(__name__)
 class Tracker:
     """Orchestrates the activity-tracking pipeline.
 
-    Each call to :meth:`poll_once` executes one full cycle:
+    Supports two modes:
+    - **Event-driven** (macOS): Uses MacOSWindowObserver for app switch
+      notifications + lightweight title polling. Only processes changes.
+    - **Polling** (fallback): Traditional poll loop every N seconds.
 
-    1. ``window_provider.get_active_window()`` → ``WindowInfo``
-    2. ``classifier.classify(app_name, window_title)`` → ``Work_Category``
-    3. ``context_analyzer.analyze(...)`` → ``ContextResult``
-    4. ``pomodoro_manager.on_activity(...)`` → events
-    5. ``pomodoro_manager.tick(now)`` → events
-    6. ``store.save_activity(...)`` — persist the observation
-    7. If the pomodoro session changed, ``store.save_session(session)``
-
-    :meth:`run` drives the loop at a configurable interval, skipping
-    polls when the user is idle.
+    Optional ML screen analysis can be toggled on/off at runtime.
     """
 
     def __init__(
@@ -45,6 +42,7 @@ class Tracker:
         pomodoro_manager: PomodoroManager,
         store: ActivityStore,
         poll_interval: int = 5,
+        ml_screen_analysis: bool = False,
     ) -> None:
         self.window_provider = window_provider
         self.classifier = classifier
@@ -54,7 +52,43 @@ class Tracker:
         self.poll_interval = poll_interval
         self._running = False
         self._seen_contexts: set[str] = set()
-        self.current_active_task_id: Optional[int] = None  # set by UI when user clicks a task
+        self.current_active_task_id: Optional[int] = None
+        self._observer = None  # MacOSWindowObserver when in event-driven mode
+        self._screen_analyzer = None
+        self._last_window_info: Optional[WindowInfo] = None
+        self._last_context = None
+        self.debug_mode = False
+        self._debug_log: list[dict] = []  # ring buffer of recent debug entries
+        self._debug_max = 100
+
+        # Initialize ML screen analyzer if enabled
+        if ml_screen_analysis:
+            self._init_screen_analyzer()
+
+    @property
+    def ml_enabled(self) -> bool:
+        """Whether ML screen analysis is currently enabled."""
+        return self._screen_analyzer is not None and self._screen_analyzer.enabled
+
+    @ml_enabled.setter
+    def ml_enabled(self, value: bool) -> None:
+        """Toggle ML screen analysis on/off at runtime."""
+        if value and self._screen_analyzer is None:
+            self._init_screen_analyzer()
+        elif value and self._screen_analyzer is not None:
+            self._screen_analyzer.enabled = True
+        elif not value and self._screen_analyzer is not None:
+            self._screen_analyzer.enabled = False
+
+    def _init_screen_analyzer(self) -> None:
+        """Lazily initialize the screen analyzer."""
+        try:
+            from flowtrack.core.screen_analyzer import ScreenAnalyzer
+            self._screen_analyzer = ScreenAnalyzer(enabled=True)
+            logger.info("ML screen analysis initialized")
+        except Exception:
+            logger.info("ML screen analysis not available on this platform")
+            self._screen_analyzer = None
 
     def poll_once(self, now: datetime) -> None:
         """Execute a single poll cycle."""
@@ -70,15 +104,62 @@ class Tracker:
             logger.debug("No active window returned; skipping this cycle")
             return
 
+        self._process_window(window_info, now)
+
+    def on_window_change(self, window_info: WindowInfo, now: datetime) -> None:
+        """Called by the event-driven observer when the active window changes."""
+        self._process_window(window_info, now)
+
+    def _process_window(self, window_info: WindowInfo, now: datetime) -> None:
+        """Core processing pipeline for a window observation."""
+
         # 2. Classify
         category = self.classifier.classify(
             window_info.app_name, window_info.window_title
         )
 
-        # 3. Analyze context
+        # 3. Analyze context (regex-based)
         context = self.context_analyzer.analyze(
             window_info.app_name, window_info.window_title, category
         )
+
+        # 3b. ML screen analysis override (if enabled)
+        ml_summary = None
+        ml_used = False
+        if self._screen_analyzer and self._screen_analyzer.enabled:
+            try:
+                ml_summary = self._screen_analyzer.analyze_screen(
+                    window_info.app_name, window_info.window_title
+                )
+                if ml_summary:
+                    ml_used = True
+                    context.activity_summary = ml_summary
+            except Exception:
+                logger.debug("ML screen analysis failed, using regex summary")
+
+        # Debug logging
+        if self.debug_mode:
+            entry = {
+                "timestamp": now.isoformat(),
+                "app_name": window_info.app_name,
+                "window_title": window_info.window_title,
+                "category": category,
+                "sub_category": context.sub_category,
+                "context_label": context.context_label,
+                "activity_summary": context.activity_summary,
+                "ml_used": ml_used,
+                "ml_raw_summary": ml_summary,
+                "active_task_id": self.current_active_task_id,
+                "session_id": self.pomodoro_manager.active_session.id if self.pomodoro_manager.active_session else None,
+                "session_status": self.pomodoro_manager.active_session.status.value if self.pomodoro_manager.active_session else None,
+            }
+            self._debug_log.append(entry)
+            if len(self._debug_log) > self._debug_max:
+                self._debug_log = self._debug_log[-self._debug_max:]
+
+        # Cache for periodic recording in event-driven mode
+        self._last_window_info = window_info
+        self._last_context = context
 
         # 4. Update pomodoro (propagate active task to session)
         self.pomodoro_manager.active_task_id = self.current_active_task_id
@@ -115,10 +196,104 @@ class Tracker:
         self._maybe_create_todo(context.category, context.sub_category)
 
     def run(self) -> None:
-        """Main loop: poll at configured interval, skip when idle (Req 1.4)."""
+        """Main loop: uses event-driven observer on macOS, falls back to polling.
+
+        On macOS, starts a MacOSWindowObserver that fires callbacks on window
+        changes. The Pomodoro timer still needs periodic ticking, so we keep
+        a lightweight tick loop.
+
+        On other platforms, falls back to the traditional poll loop.
+        """
         self._running = True
+
+        # Try event-driven mode on macOS
+        if sys.platform == "darwin" and self._try_start_observer():
+            logger.info("Running in event-driven mode (macOS observer)")
+            self._run_tick_loop()
+        else:
+            logger.info("Running in polling mode (interval=%ds)", self.poll_interval)
+            self._run_poll_loop()
+
+    def _try_start_observer(self) -> bool:
+        """Try to start the macOS event-driven observer."""
+        try:
+            from flowtrack.platform.macos import MacOSWindowProvider
+            from flowtrack.platform.macos_observer import MacOSWindowObserver
+
+            if not isinstance(self.window_provider, MacOSWindowProvider):
+                return False
+
+            self._observer = MacOSWindowObserver(
+                provider=self.window_provider,
+                on_change=self.on_window_change,
+                title_check_interval=self.poll_interval,
+            )
+            self._observer.start()
+            return True
+        except ImportError:
+            return False
+        except Exception:
+            logger.debug("Failed to start macOS observer", exc_info=True)
+            return False
+
+    def _run_tick_loop(self) -> None:
+        """Tick loop for event-driven mode.
+
+        The observer handles window change detection and calls on_window_change.
+        This loop periodically:
+        1. Ticks the Pomodoro timer
+        2. Saves an activity record for the current window (so time accumulates)
+        3. Persists session state
+        """
         while self._running:
-            # Check idle before polling
+            try:
+                idle = self.window_provider.is_user_idle()
+            except Exception:
+                idle = False
+
+            if not idle:
+                now = datetime.now()
+                self.pomodoro_manager.tick(now)
+
+                # Save a periodic activity record so time accumulates
+                if self._last_window_info is not None and self._last_context is not None:
+                    session_id = None
+                    if self.pomodoro_manager.active_session is not None:
+                        session_id = self.pomodoro_manager.active_session.id
+
+                    record = ActivityRecord(
+                        id=0,
+                        timestamp=now,
+                        app_name=self._last_window_info.app_name,
+                        window_title=self._last_window_info.window_title,
+                        category=self._last_context.category,
+                        sub_category=self._last_context.sub_category,
+                        session_id=session_id,
+                        active_task_id=self.current_active_task_id,
+                        activity_summary=self._last_context.activity_summary,
+                    )
+                    try:
+                        self.store.save_activity(record)
+                    except Exception:
+                        logger.debug("Failed to save periodic activity record")
+
+                # Persist session state
+                if self.pomodoro_manager.active_session is not None:
+                    try:
+                        self.store.save_session(self.pomodoro_manager.active_session)
+                    except Exception:
+                        logger.debug("Failed to persist session in tick loop")
+
+            time.sleep(self.poll_interval)
+
+        # Clean up observer
+        if self._observer is not None:
+            self._observer.stop()
+            self._observer = None
+
+    def _run_poll_loop(self) -> None:
+        """Traditional polling loop (fallback for non-macOS)."""
+        while self._running:
             try:
                 idle = self.window_provider.is_user_idle()
             except Exception:
