@@ -95,7 +95,7 @@ if IS_MACOS:
         bundle_identifier="com.carrotsummary.app",
         info_plist={
             "CFBundleDisplayName": "CarrotSummary",
-            "CFBundleShortVersionString": "2.0.0",
+            "CFBundleShortVersionString": "2.1.0",
             "LSBackgroundOnly": False,
             "LSUIElement": True,
             "NSHighResolutionCapable": True,

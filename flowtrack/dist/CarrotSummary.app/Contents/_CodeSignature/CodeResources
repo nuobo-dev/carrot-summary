@@ -18,7 +18,7 @@
 		</data>
 		<key>Resources/base_library.zip</key>
 		<data>
-		Npai8pRMPkB6E32QZf7dwDKxH9I=
+		4fzOFVoIPKV8w8nYXjX1+wld9Kc=
 		</data>
 		<key>Resources/click-8.3.1.dist-info/INSTALLER</key>
 		<data>
@@ -98,15 +98,15 @@
 		</data>
 		<key>Resources/flowtrack/ui/static/app.js</key>
 		<data>
-		uLJNl1i30VfmxgCWiTEfObsh7bQ=
+		7rdr9aoFElNrhWxk6tFTM/203Zw=
 		</data>
 		<key>Resources/flowtrack/ui/static/style.css</key>
 		<data>
-		kXRngfiFwTnqpckOtZPLbXwU154=
+		YoPn5d78RP1XKCPxn7QYzud0mBw=
 		</data>
 		<key>Resources/flowtrack/ui/templates/dashboard.html</key>
 		<data>
-		fwgUuHPI31ymY8suveYnp1Qf06U=
+		aStdU1e1GJbFYoiOxYJutAsfNF8=
 		</data>
 		<key>Resources/icon.icns</key>
 		<data>
@@ -508,6 +508,96 @@
 			</data>
 			<key>requirement</key>
 			<string>cdhash H"43665b1f5c150818391f8a8df3af0e51b24cc783"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreGraphics/_callbacks.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			LrVY9G9AyfYTkY36SaNK1X3RQT0=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"2eb558f46f40c9f613918dfa49a34ad57dd1413d"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreGraphics/_coregraphics.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			u0FP+tqafWNF8xdyaczoJfs8NLE=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"bb414ffada9a7d6345f3177269cce825fb3c34b1"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreGraphics/_doubleindirect.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			ETsMFw3sVt4tfsm69Yo4inhaXzE=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"113b0c170dec56de2d7ec9baf58a388a785a5f31"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreGraphics/_inlines.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			SHeu4vBXcp83e8y551bTWBwt2t4=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"4877aee2f057729f377bccb9e756d3581c2ddade"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreGraphics/_sortandmap.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			vBPRp6xi3ridzY8u4rLMOnFO7L0=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"bc13d1a7ac62deb89dcd8f2ee2b2cc3a714eecbd"</string>
+		</dict>
+		<key>Frameworks/Quartz/CoreVideo/_CVPixelBuffer.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			KF4kURKzCjWDsWZ+qUX7l0TP9QY=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"285e245112b30a3583b1667ea945fb9744cff506"</string>
+		</dict>
+		<key>Frameworks/Quartz/ImageKit/_imagekit.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			jEOrXQF4X2VdJrDohw/wwXuTNPk=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"8c43ab5d01785f655d26b0e8870ff0c17b9334f9"</string>
+		</dict>
+		<key>Frameworks/Quartz/PDFKit/_PDFKit.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			2Wn5l+GT/IHaaGQao2g7w6tX7K0=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"d969f997e193fc81da68641aa3683bc3ab57ecad"</string>
+		</dict>
+		<key>Frameworks/Quartz/QuartzCore/_quartzcore.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			niTBzAhzjQig++kJjqfy0XIVUo8=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"9e24c1cc08738d08a0fbe9098ea7f2d17215528f"</string>
+		</dict>
+		<key>Frameworks/Quartz/QuickLookUI/_QuickLookUI.cpython-313-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			Hfiv191SuiPLG7fuVvFFJ/NwVJU=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"1df8afd7dd52ba23cb1bb7ee56f14527f3705495"</string>
 		</dict>
 		<key>Frameworks/_cffi_backend.cpython-313-darwin.so</key>
 		<dict>
@@ -1260,6 +1350,11 @@
 			<key>symlink</key>
 			<string>../Frameworks/Python.framework</string>
 		</dict>
+		<key>Resources/Quartz</key>
+		<dict>
+			<key>symlink</key>
+			<string>../Frameworks/Quartz</string>
+		</dict>
 		<key>Resources/_cffi_backend.cpython-313-darwin.so</key>
 		<dict>
 			<key>symlink</key>
@@ -1290,7 +1385,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			NczzPAhS72U3aHlzGd/M9vdIx8BLlvRMQnNTboVCH1g=
+			bY4O7XyMreBPNWv0A+aQNAJgGDjj5RoKltQ9kIkFwRQ=
 			</data>
 		</dict>
 		<key>Resources/click-8.3.1.dist-info/INSTALLER</key>
@@ -1435,21 +1530,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			oJkApAMtqPvjfHDVwHwwhpZUIswTIBL1lRfgeDxCbZc=
+			0kUqhNAdTpUMT4mz4x1r/RDTXa+aIfM2RXvXI0e9aY4=
 			</data>
 		</dict>
 		<key>Resources/flowtrack/ui/static/style.css</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			Rktxyu1MyGzigi8bKooni0h/WVuJNEBrlFqVOKm1RIw=
+			qQdndtT59VKKkQXlUMhK31qh702iofvLGeKpdxlKRBs=
 			</data>
 		</dict>
 		<key>Resources/flowtrack/ui/templates/dashboard.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			wFmNzWPfYe3DHqxzfCvYGxftdySoRoPbyCwwmKu3cKo=
+			Y4Q3wy9UFFswceCTJimZ4ApyKc1tDjQi+u9s5zbEGNY=
 			</data>
 		</dict>
 		<key>Resources/icon.icns</key>

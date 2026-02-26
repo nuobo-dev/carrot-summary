@@ -13,6 +13,7 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'activity') { refreshActivity(); loadActivityByTask(); }
+    if (t.dataset.tab === 'news') { loadNews(currentNewsType); }
   };
 });
 
@@ -154,7 +155,7 @@ async function addTaskToBucket(bucketId) {
 
 // --- Todo rendering (Focus tab) ---
 async function refreshTodos() {
-  const todos = await fetchJSON('/api/todos');
+  const todos = await fetchJSON('/api/todos?show=manual');
   const el = document.getElementById('todo-list');
   const parents = todos.filter(t => !t.parent_id);
   const childMap = {};
@@ -449,11 +450,131 @@ async function pomodoroSkip() { await fetchJSON('/api/pomodoro/skip',{method:'PO
 
 // --- Timers ---
 setInterval(refreshStatus, 2000);
+setInterval(refreshLiveTracking, 3000);
 setInterval(refreshActivity, 15000);
 setInterval(()=>{ if(!lastStatus||lastStatus==='completed'||lastStatus==='paused') return;
   updateTimerDisplay(Math.max(0,lastRemaining-(Date.now()-lastRemainingAt)/1000),lastTotal,lastStatus); }, 1000);
 
+// --- ML Screen Analysis Toggle ---
+async function loadMLStatus() {
+  try {
+    const d = await fetchJSON('/api/ml-analysis');
+    const toggle = document.getElementById('s-ml-toggle');
+    const status = document.getElementById('ml-status');
+    if (toggle) toggle.checked = d.enabled;
+    if (status) status.textContent = d.enabled ? 'On — using Vision OCR' : d.available ? 'Off' : 'Not available on this platform';
+  } catch(e) { console.debug('ML status check failed'); }
+}
+async function toggleML(enabled) {
+  await fetchJSON('/api/ml-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled})});
+  loadMLStatus();
+}
+
+// --- Debug Mode ---
+async function loadDebugStatus() {
+  try {
+    const d = await fetchJSON('/api/debug');
+    const toggle = document.getElementById('s-debug-toggle');
+    const status = document.getElementById('debug-status');
+    const panel = document.getElementById('debug-panel');
+    if (toggle) toggle.checked = d.enabled;
+    if (status) status.textContent = d.enabled ? 'On' : 'Off';
+    if (panel) panel.style.display = d.enabled ? 'block' : 'none';
+    if (d.enabled && d.log.length) renderDebugLog(d.log);
+  } catch(e) { console.debug('Debug status check failed'); }
+}
+async function toggleDebug(enabled) {
+  await fetchJSON('/api/debug', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled})});
+  loadDebugStatus();
+}
+async function loadDebugLog() {
+  const d = await fetchJSON('/api/debug');
+  if (d.log) renderDebugLog(d.log);
+}
+function renderDebugLog(entries) {
+  const el = document.getElementById('debug-log');
+  if (!el) return;
+  let html = '';
+  entries.slice().reverse().forEach(e => {
+    const mlBadge = e.ml_used ? '<span style="color:var(--green);font-weight:600">[ML]</span>' : '<span style="color:var(--text-tertiary)">[regex]</span>';
+    html += `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="color:var(--text-tertiary)">${esc(e.timestamp)}</div>
+      <div><strong>${esc(e.app_name)}</strong> — ${esc(e.window_title || '(no title)')}</div>
+      <div>Category: <span style="color:var(--accent)">${esc(e.category)}</span> → ${esc(e.sub_category)}</div>
+      <div>Summary ${mlBadge}: ${esc(e.activity_summary)}</div>
+      ${e.ml_raw_summary ? '<div style="color:var(--green)">ML OCR: ' + esc(e.ml_raw_summary) + '</div>' : ''}
+      <div style="color:var(--text-tertiary)">Task: ${e.active_task_id || 'none'} | Session: ${e.session_id || 'none'} (${e.session_status || '-'})</div>
+    </div>`;
+  });
+  el.innerHTML = html || '<div style="color:var(--text-tertiary)">No debug entries yet. Interact with apps to generate logs.</div>';
+}
+
+// --- Live Tracking (Activity tab) ---
+async function refreshLiveTracking() {
+  try {
+    const d = await fetchJSON('/api/live-tracking');
+    const card = document.getElementById('live-tracking-card');
+    const info = document.getElementById('live-tracking-info');
+    if (!card || !info) return;
+    if (!d.tracking) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    const t = d.tracking;
+    const mlTag = t.ml_enabled ? ' <span style="color:var(--green);font-size:11px">[ML OCR active]</span>' : '';
+    info.innerHTML = `
+      <div style="margin-bottom:4px"><strong>${esc(t.app_name)}</strong>${mlTag}</div>
+      <div style="color:var(--text-secondary);margin-bottom:2px">${esc(t.window_title)}</div>
+      <div style="font-size:12px">
+        <span style="color:var(--accent)">${esc(t.category)}</span>
+        ${t.sub_category !== t.category ? ' → ' + esc(t.sub_category) : ''}
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">📝 ${esc(t.activity_summary)}</div>
+    `;
+  } catch(e) {}
+}
+
+// --- AI News Feed ---
+let currentNewsType = 'business';
+async function loadNews(type, force) {
+  currentNewsType = type || 'business';
+  const bizBtn = document.getElementById('news-biz-btn');
+  const techBtn = document.getElementById('news-tech-btn');
+  if (bizBtn) { bizBtn.className = currentNewsType === 'business' ? 'btn btn-sm' : 'btn btn-ghost btn-sm'; bizBtn.style.fontWeight = currentNewsType === 'business' ? '600' : '400'; }
+  if (techBtn) { techBtn.className = currentNewsType === 'technical' ? 'btn btn-sm' : 'btn btn-ghost btn-sm'; techBtn.style.fontWeight = currentNewsType === 'technical' ? '600' : '400'; }
+
+  const list = document.getElementById('news-list');
+  const loading = document.getElementById('news-loading');
+  if (loading) loading.style.display = 'block';
+  if (list) list.innerHTML = '';
+
+  try {
+    const url = '/api/news?type=' + currentNewsType + (force ? '&bust=' + Date.now() : '');
+    const d = await fetchJSON(url);
+    if (loading) loading.style.display = 'none';
+    if (!d.items || !d.items.length) {
+      list.innerHTML = '<p style="color:var(--text-tertiary);padding:12px 0">No news available. Check your internet connection.</p>';
+      return;
+    }
+    const title = currentNewsType === 'business' ? '🗞️ Top AI News — Last 7 Days' : '🔧 Technical AI & Open Source — Last 7 Days';
+    let html = '<div class="news-section-title">' + title + '</div>';
+    d.items.forEach((item, i) => {
+      html += `<div class="news-item">
+        <div class="news-headline">📌 <a href="${esc(item.link)}" target="_blank">${esc(item.headline)}</a></div>
+        <div class="news-takeaway">💡 ${esc(item.takeaway)}</div>
+        <div class="news-relevance">📈 ${esc(item.relevance)}</div>
+        <div class="news-meta">
+          <span>ℹ️ ${esc(item.source)}</span>
+          ${item.date ? '<span>' + esc(item.date) + '</span>' : ''}
+        </div>
+      </div>`;
+    });
+    list.innerHTML = html;
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    list.innerHTML = '<p style="color:var(--text-tertiary)">Failed to load news.</p>';
+  }
+}
+
 // --- Init ---
-refreshStatus(); refreshTodos(); refreshActivity(); loadConfig(); renderCalendar();
+refreshStatus(); refreshTodos(); refreshActivity(); loadConfig(); loadMLStatus(); loadDebugStatus(); renderCalendar();
 document.getElementById('report-start').value = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
 document.getElementById('report-end').value = new Date().toISOString().split('T')[0];
