@@ -101,6 +101,15 @@ class ActivityStore:
         self._migrate_add_column(conn, "pomodoro_sessions", "active_task_id", "INTEGER")
         self._migrate_add_column(conn, "focus_tasks", "sort_order", "INTEGER NOT NULL DEFAULT 0")
 
+        # Fix: mark "General: ..." buckets as auto_generated (they were incorrectly created as manual)
+        try:
+            conn.execute(
+                "UPDATE focus_tasks SET auto_generated = 1 WHERE title LIKE 'General: %' AND parent_id IS NULL AND auto_generated = 0"
+            )
+            conn.commit()
+        except Exception:
+            pass
+
     @staticmethod
     def _migrate_add_column(conn, table: str, column: str, col_type: str) -> None:
         """Add a column to a table if it doesn't exist yet."""

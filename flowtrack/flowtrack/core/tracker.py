@@ -366,12 +366,12 @@ class Tracker:
         """Find a manual work bucket for this category, or create a general one."""
         try:
             todos = self.store.get_todos(include_done=True)
-            # Look for an existing manual (non-auto) top-level todo matching this category
+            # Look for an existing top-level todo matching this category (manual or auto)
             for t in todos:
-                if not t.get("auto_generated") and not t.get("parent_id") and t.get("category", "").lower() == category.lower():
+                if not t.get("parent_id") and t.get("category", "").lower() == category.lower():
                     return t["id"]
-            # No manual bucket found — create a general one
-            bucket_id = self.store.add_todo(f"General: {category}", category, auto=False, parent_id=None)
+            # No bucket found — create an auto-generated one
+            bucket_id = self.store.add_todo(f"General: {category}", category, auto=True, parent_id=None)
             return bucket_id
         except Exception:
             return None

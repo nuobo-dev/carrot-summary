@@ -155,17 +155,11 @@ async function addTaskToBucket(bucketId) {
 
 // --- Todo rendering (Focus tab) ---
 async function refreshTodos() {
-  const todos = await fetchJSON('/api/todos?show=manual');
+  const buckets = await fetchJSON('/api/todos?show=manual');
   const el = document.getElementById('todo-list');
-  const parents = todos.filter(t => !t.parent_id);
-  const childMap = {};
-  todos.filter(t => t.parent_id).forEach(t => {
-    if (!childMap[t.parent_id]) childMap[t.parent_id] = [];
-    childMap[t.parent_id].push(t);
-  });
   let html = '';
-  parents.forEach(p => {
-    const children = childMap[p.id] || [];
+  buckets.forEach(p => {
+    const children = p.children || [];
     html += `<div class="bucket" data-id="${p.id}" draggable="true"
       ondragstart="dragBucket(event,${p.id})"
       ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -201,26 +195,8 @@ async function refreshTodos() {
     </div>`;
     html += '</div></div>';
   });
-  // Orphan tasks
-  const orphans = todos.filter(t => t.parent_id && !parents.find(pp => pp.id === t.parent_id));
-  if (orphans.length) {
-    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
-    html += '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">Unassigned</div>';
-    orphans.forEach(c => {
-      const isActive = activeTaskId === c.id;
-      html += `<div class="todo-item child-item ${c.done?'done':''} ${isActive?'active':''}"
-        data-task-id="${c.id}"
-        draggable="true" ondragstart="dragTodo(event,${c.id})"
-        onclick="event.target.tagName!=='INPUT'&&event.target.tagName!=='BUTTON'&&setActiveTask(${c.id})">
-        <span class="drag-handle">⠿</span>
-        <input type="checkbox" ${c.done?'checked':''} onchange="toggleTodo(${c.id})">
-        <span class="t-title">${esc(c.title)}</span>
-        ${isActive?'<span class="t-badge tracking">● tracking</span>':''}
-        <span class="t-badge auto">auto</span>
-        <button class="t-del" onclick="event.stopPropagation();deleteTodo(${c.id})">×</button>
-      </div>`;
-    });
-    html += '</div>';
+  if (!buckets.length) {
+    html = '<p style="color:var(--text-tertiary);font-size:13px;padding:8px 0">No buckets yet. Add one above.</p>';
   }
   el.innerHTML = html;
 }
