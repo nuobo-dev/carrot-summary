@@ -12,7 +12,12 @@ document.querySelectorAll('.tab').forEach(t => {
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
-    if (t.dataset.tab === 'activity') { refreshActivity(); loadActivityByTask(); }
+    if (t.dataset.tab === 'activity') {
+      // Always show today when switching to Activity tab
+      const today = new Date().toISOString().split('T')[0];
+      if (selectedDate < today) { selectedDate = today; }
+      refreshActivity(); loadActivityByTask();
+    }
     if (t.dataset.tab === 'news') { loadNews(currentNewsType); }
   };
 });
@@ -428,6 +433,17 @@ async function pomodoroSkip() { await fetchJSON('/api/pomodoro/skip',{method:'PO
 setInterval(refreshStatus, 2000);
 setInterval(refreshLiveTracking, 3000);
 setInterval(refreshActivity, 15000);
+
+// Day-change detection: auto-refresh activity when a new day starts
+setInterval(() => {
+  const today = new Date().toISOString().split('T')[0];
+  if (selectedDate !== today && selectedDate < today) {
+    selectedDate = today;
+    calYear = new Date().getFullYear();
+    calMonth = new Date().getMonth() + 1;
+    refreshActivity(); loadActivityByTask(); renderCalendar();
+  }
+}, 30000); // check every 30s
 setInterval(()=>{ if(!lastStatus||lastStatus==='completed'||lastStatus==='paused') return;
   updateTimerDisplay(Math.max(0,lastRemaining-(Date.now()-lastRemainingAt)/1000),lastTotal,lastStatus); }, 1000);
 
