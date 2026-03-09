@@ -279,6 +279,13 @@ class ActivityStore:
         conn.execute("DELETE FROM focus_tasks WHERE auto_generated = 1")
         conn.commit()
 
+    def clear_done_todos(self) -> None:
+        """Delete all tasks marked as done."""
+        conn = self._get_conn()
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("DELETE FROM focus_tasks WHERE done = 1")
+        conn.commit()
+
     def merge_buckets(self, source_id: int, target_id: int) -> None:
         """Move all children of source_id to target_id, then delete source."""
         conn = self._get_conn()

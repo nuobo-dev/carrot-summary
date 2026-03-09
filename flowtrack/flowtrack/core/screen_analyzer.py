@@ -26,6 +26,7 @@ class ScreenAnalyzer:
         self.enabled = enabled
         self._vision_available = False
         self._capture_available = False
+        self.last_ocr_text = ""  # Raw OCR text for debug display
         if enabled:
             self._check_availability()
 
@@ -67,6 +68,7 @@ class ScreenAnalyzer:
             if not text:
                 return None
 
+            self.last_ocr_text = text[:500]  # Store for debug (truncated)
             return self._summarize(app_name, window_title, text)
         except Exception:
             logger.debug("Screen analysis failed", exc_info=True)

@@ -6,19 +6,23 @@ let selectedDate = new Date().toISOString().split('T')[0];
 let calYear = new Date().getFullYear(), calMonth = new Date().getMonth() + 1;
 
 // Tab switching
-document.querySelectorAll('.tab').forEach(t => {
+document.querySelectorAll('.nav-item').forEach(t => {
   t.onclick = () => {
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'activity') {
-      // Always show today when switching to Activity tab
-      const today = new Date().toISOString().split('T')[0];
-      if (selectedDate < today) { selectedDate = today; }
-      refreshActivity(); loadActivityByTask();
+      // Reset to today
+      selectedDate = new Date().toISOString().split('T')[0];
+      userSelectedPastDate = false;
+      calYear = new Date().getFullYear();
+      calMonth = new Date().getMonth() + 1;
+      refreshActivity(); loadActivityByTask(); renderCalendar();
     }
     if (t.dataset.tab === 'news') { loadNews(currentNewsType); }
+    // Re-init spotlight for newly visible cards
+    setTimeout(initSpotlight, 50);
   };
 });
 
@@ -325,7 +329,13 @@ async function loadActivity(dateStr) {
   document.getElementById('activity-total').textContent = d.total_time;
   document.getElementById('activity-sessions').textContent = d.total_sessions;
 }
-async function refreshActivity() { loadActivity(selectedDate); }
+let userSelectedPastDate = false;
+async function refreshActivity() {
+  if (!userSelectedPastDate) {
+    selectedDate = new Date().toISOString().split('T')[0];
+  }
+  loadActivity(selectedDate);
+}
 
 function toggleSubs(i) {
   const el = document.getElementById('subs-'+i), ch = document.getElementById('chev-'+i);
@@ -361,7 +371,12 @@ async function renderCalendar() {
 }
 function calPrev() { calMonth--; if(calMonth<1){calMonth=12;calYear--;} renderCalendar(); }
 function calNext() { calMonth++; if(calMonth>12){calMonth=1;calYear++;} renderCalendar(); }
-function selectDay(ds) { selectedDate = ds; loadActivity(ds); loadActivityByTask(ds); renderCalendar(); }
+function selectDay(ds) {
+  selectedDate = ds;
+  const today = new Date().toISOString().split('T')[0];
+  userSelectedPastDate = (ds !== today);
+  loadActivity(ds); loadActivityByTask(ds); renderCalendar();
+}
 
 // --- Report ---
 async function generateReport() {
@@ -423,6 +438,7 @@ async function toggleTodo(id) { await fetchJSON(`/api/todos/${id}/toggle`,{metho
 async function deleteTodo(id) { await fetchJSON(`/api/todos/${id}`,{method:'DELETE'}); refreshTodos(); }
 async function clearAllTodos() { if(!confirm('Delete ALL tasks?')) return; await fetchJSON('/api/todos/clear-all',{method:'POST'}); refreshTodos(); }
 async function clearAutoTodos() { if(!confirm('Delete auto-tracked tasks?')) return; await fetchJSON('/api/todos/clear-auto',{method:'POST'}); refreshTodos(); }
+async function clearDoneTodos() { await fetchJSON('/api/todos/clear-done',{method:'POST'}); refreshTodos(); }
 
 // --- Pomodoro controls ---
 async function pomodoroStart() { await fetchJSON('/api/pomodoro/start',{method:'POST'}); refreshStatus(); }
@@ -437,7 +453,7 @@ setInterval(refreshActivity, 15000);
 // Day-change detection: auto-refresh activity when a new day starts
 setInterval(() => {
   const today = new Date().toISOString().split('T')[0];
-  if (selectedDate !== today && selectedDate < today) {
+  if (selectedDate !== today) {
     selectedDate = today;
     calYear = new Date().getFullYear();
     calMonth = new Date().getMonth() + 1;
@@ -495,6 +511,7 @@ function renderDebugLog(entries) {
       <div>Category: <span style="color:var(--accent)">${esc(e.category)}</span> → ${esc(e.sub_category)}</div>
       <div>Summary ${mlBadge}: ${esc(e.activity_summary)}</div>
       ${e.ml_raw_summary ? '<div style="color:var(--green)">ML OCR: ' + esc(e.ml_raw_summary) + '</div>' : ''}
+      ${e.ocr_raw_text ? '<div style="color:var(--text-tertiary);font-size:10px;max-height:60px;overflow:hidden">OCR raw: ' + esc(e.ocr_raw_text) + '</div>' : ''}
       <div style="color:var(--text-tertiary)">Task: ${e.active_task_id || 'none'} | Session: ${e.session_id || 'none'} (${e.session_status || '-'})</div>
     </div>`;
   });
@@ -566,7 +583,64 @@ async function loadNews(type, force) {
   }
 }
 
+// --- Sparkles particle background ---
+(function initParticles() {
+  if (typeof tsParticles === 'undefined') {
+    setTimeout(initParticles, 200);
+    return;
+  }
+  tsParticles.load("tsparticles", {
+    background: { color: { value: "#0a0f0e" } },
+    fullScreen: { enable: false, zIndex: 0 },
+    fpsLimit: 120,
+    interactivity: {
+      events: {
+        onClick: { enable: true, mode: "push" },
+        onHover: { enable: true, mode: "repulse" },
+      },
+      modes: {
+        push: { quantity: 4 },
+        repulse: { distance: 120, duration: 0.4 },
+      },
+    },
+    particles: {
+      color: { value: "#14b8a6" },
+      move: {
+        enable: true,
+        speed: { min: 0.1, max: 0.8 },
+        direction: "none",
+        outModes: { default: "out" },
+      },
+      number: {
+        density: { enable: true, area: 800 },
+        value: 100,
+      },
+      opacity: {
+        value: { min: 0.1, max: 0.8 },
+        animation: { enable: true, speed: 1.5, sync: false, startValue: "random" },
+      },
+      shape: { type: "circle" },
+      size: { value: { min: 0.5, max: 2 } },
+      links: { enable: false },
+    },
+    detectRetina: true,
+  });
+})();
+
+// --- Spotlight glow effect for cards ---
+function initSpotlight() {
+  document.querySelectorAll('.card').forEach(card => card.setAttribute('data-glow', ''));
+  document.addEventListener('pointermove', e => {
+    document.querySelectorAll('.card[data-glow]').forEach(card => {
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--glow-x', (e.clientX - rect.left).toFixed(0));
+      card.style.setProperty('--glow-y', (e.clientY - rect.top).toFixed(0));
+    });
+  });
+}
+
 // --- Init ---
+initSpotlight();
 refreshStatus(); refreshTodos(); refreshActivity(); loadConfig(); loadMLStatus(); loadDebugStatus(); renderCalendar();
 document.getElementById('report-start').value = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
 document.getElementById('report-end').value = new Date().toISOString().split('T')[0];

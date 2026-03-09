@@ -231,6 +231,12 @@ def create_flask_app() -> Flask:
             _app_ref._store.clear_auto_todos()
         return jsonify({"ok": True})
 
+    @app.route("/api/todos/clear-done", methods=["POST"])
+    def api_clear_done_todos():
+        if _app_ref and _app_ref._store:
+            _app_ref._store.clear_done_todos()
+        return jsonify({"ok": True})
+
     @app.route("/api/todos/merge", methods=["POST"])
     def api_merge_buckets():
         if not _app_ref or not _app_ref._store:

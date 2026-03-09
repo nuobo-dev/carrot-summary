@@ -139,6 +139,9 @@ class Tracker:
 
         # Debug logging
         if self.debug_mode:
+            ocr_raw = ""
+            if self._screen_analyzer and hasattr(self._screen_analyzer, 'last_ocr_text'):
+                ocr_raw = self._screen_analyzer.last_ocr_text
             entry = {
                 "timestamp": now.isoformat(),
                 "app_name": window_info.app_name,
@@ -149,6 +152,7 @@ class Tracker:
                 "activity_summary": context.activity_summary,
                 "ml_used": ml_used,
                 "ml_raw_summary": ml_summary,
+                "ocr_raw_text": ocr_raw if ml_used else "",
                 "active_task_id": self.current_active_task_id,
                 "session_id": self.pomodoro_manager.active_session.id if self.pomodoro_manager.active_session else None,
                 "session_status": self.pomodoro_manager.active_session.status.value if self.pomodoro_manager.active_session else None,
