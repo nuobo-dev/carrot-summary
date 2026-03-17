@@ -286,6 +286,12 @@ class ActivityStore:
         conn.execute("DELETE FROM focus_tasks WHERE done = 1")
         conn.commit()
 
+    def clear_all_activities(self) -> None:
+        """Delete all activity log entries."""
+        conn = self._get_conn()
+        conn.execute("DELETE FROM activity_logs")
+        conn.commit()
+
     def merge_buckets(self, source_id: int, target_id: int) -> None:
         """Move all children of source_id to target_id, then delete source."""
         conn = self._get_conn()

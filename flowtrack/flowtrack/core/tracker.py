@@ -196,8 +196,7 @@ class Tracker:
         if self.pomodoro_manager.active_session is not None:
             self.store.save_session(self.pomodoro_manager.active_session)
 
-        # 8. Auto-generate todo for new sub-categories
-        self._maybe_create_todo(context.category, context.sub_category)
+        # 8. Auto-generate todo disabled — Focus tab is manual-only
 
     def run(self) -> None:
         """Main loop: uses event-driven observer on macOS, falls back to polling.

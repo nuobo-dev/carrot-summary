@@ -176,12 +176,16 @@ def create_flask_app() -> Flask:
                 parents.append(t)
 
         if show == "manual":
-            # Focus tab: only user-defined (non-auto) top-level buckets
+            # Focus tab: only user-defined (non-auto) top-level buckets and children
             parents = [p for p in parents if not p.get("auto_generated")]
 
         result = []
         for p in parents:
-            p["children"] = child_map.get(p["id"], [])
+            children = child_map.get(p["id"], [])
+            if show == "manual":
+                # Filter out auto-generated children too — keep Focus tab clean
+                children = [c for c in children if not c.get("auto_generated")]
+            p["children"] = children
             result.append(p)
         return jsonify(result)
 
@@ -235,6 +239,15 @@ def create_flask_app() -> Flask:
     def api_clear_done_todos():
         if _app_ref and _app_ref._store:
             _app_ref._store.clear_done_todos()
+        return jsonify({"ok": True})
+
+    @app.route("/api/activities/clear", methods=["POST"])
+    def api_clear_activities():
+        if _app_ref and _app_ref._store:
+            _app_ref._store.clear_all_activities()
+            _app_ref._store.clear_auto_todos()  # Only auto-generated buckets/tasks, not manual Focus ones
+            if _app_ref.tracker:
+                _app_ref.tracker._seen_contexts.clear()
         return jsonify({"ok": True})
 
     @app.route("/api/todos/merge", methods=["POST"])

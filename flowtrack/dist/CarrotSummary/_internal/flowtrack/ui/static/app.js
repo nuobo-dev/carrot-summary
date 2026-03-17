@@ -2,6 +2,7 @@
 let config = {}, currentSession = null, activeTaskId = null, activeTaskDisplay = null;
 const C = 2 * Math.PI * 90;
 let lastRemaining = 0, lastRemainingAt = 0, lastTotal = 1500, lastStatus = null;
+let prevSessionStatus = null, prevCompletedCount = 0;
 let selectedDate = new Date().toISOString().split('T')[0];
 let calYear = new Date().getFullYear(), calMonth = new Date().getMonth() + 1;
 
@@ -69,6 +70,12 @@ async function refreshStatus() {
 
     if (d.session) {
       const s = d.session;
+      // Detect work completion → play chime
+      if (s.status === 'break' && prevSessionStatus === 'active' && s.completed_count > prevCompletedCount) {
+        playChime();
+      }
+      prevSessionStatus = s.status;
+      prevCompletedCount = s.completed_count;
       const total = s.status === 'break' ? (s.completed_count > 0 && s.completed_count % 4 === 0 ? 900 : 300) : 1500;
       lastRemaining = s.remaining; lastRemainingAt = Date.now(); lastTotal = total; lastStatus = s.status;
       document.getElementById('session-cat').textContent = s.category + (s.sub_category && s.sub_category !== s.category ? ' / ' + s.sub_category : '');
@@ -439,6 +446,7 @@ async function deleteTodo(id) { await fetchJSON(`/api/todos/${id}`,{method:'DELE
 async function clearAllTodos() { if(!confirm('Delete ALL tasks?')) return; await fetchJSON('/api/todos/clear-all',{method:'POST'}); refreshTodos(); }
 async function clearAutoTodos() { if(!confirm('Delete auto-tracked tasks?')) return; await fetchJSON('/api/todos/clear-auto',{method:'POST'}); refreshTodos(); }
 async function clearDoneTodos() { await fetchJSON('/api/todos/clear-done',{method:'POST'}); refreshTodos(); }
+async function clearActivities() { if(!confirm('Clear all tracked activities and auto-generated tasks? Your Focus tab tasks will be kept.')) return; await fetchJSON('/api/activities/clear',{method:'POST'}); refreshActivity(); loadActivityByTask(); refreshTodos(); }
 
 // --- Pomodoro controls ---
 async function pomodoroStart() { await fetchJSON('/api/pomodoro/start',{method:'POST'}); refreshStatus(); }
@@ -581,6 +589,32 @@ async function loadNews(type, force) {
     if (loading) loading.style.display = 'none';
     list.innerHTML = '<p style="color:var(--text-tertiary)">Failed to load news.</p>';
   }
+}
+
+// --- Pomodoro chime notification ---
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Play a pleasant two-tone chime
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.8);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.8);
+    });
+    // Also try browser notification
+    if (Notification.permission === 'granted') {
+      new Notification('🥕 Pomodoro Complete', { body: 'Time for a break!' });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  } catch(e) { console.debug('Chime failed:', e); }
 }
 
 // --- Sparkles particle background ---

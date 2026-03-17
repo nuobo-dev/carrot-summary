@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CarrotSummary</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=2.2">
 </head>
 <body>
 <!-- Sparkles Particle Background -->
@@ -97,6 +97,8 @@
         <h2 id="activity-date-label">Today</h2>
         <div class="meta">
           <strong id="activity-total">0m</strong> · <span id="activity-sessions">0</span> sessions
+          <button class="btn btn-ghost btn-sm" onclick="refreshActivity();loadActivityByTask()">↻ Refresh</button>
+          <button class="btn btn-danger btn-sm" onclick="clearActivities()">Clear All</button>
         </div>
       </div>
       <div id="activity-by-task"></div>
@@ -187,6 +189,6 @@
   </section>
 </div>
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2.2"></script>
 </body>
 </html>
